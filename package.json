@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev:react": "webpack serve --config scripts/webpack/config.dev.js"
+    "dev": "ts-node-transpile-only scripts/dev/concurrent.ts",
+    "dev:d-client": "webpack serve --config scripts/webpack/config.dev.js",
+    "dev:d-server": "nodemon"
   },
   "repository": {
     "type": "git",
@@ -53,6 +55,7 @@
     "@whatasoda/eslint-config": "^3.14.0",
     "@whatasoda/tsconfig": "^1.0.3",
     "clean-webpack-plugin": "^4.0.0-alpha.0",
+    "concurrently": "^6.2.0",
     "css-loader": "^5.2.6",
     "html-webpack-plugin": "^5.3.1",
     "nodemon": "^2.0.7",

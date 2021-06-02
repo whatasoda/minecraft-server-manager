@@ -20,6 +20,8 @@ app.use(
       secure: isProd,
       httpOnly: true,
     },
+    resave: false,
+    saveUninitialized: true,
   }),
 );
 
@@ -32,5 +34,5 @@ app.get('*', (_, res) => {
 
 app.listen(8000, 'localhost', () => {
   // eslint-disable-next-line no-console
-  console.log('listening');
+  console.log('Server started on port 8000');
 });

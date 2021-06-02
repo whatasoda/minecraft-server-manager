@@ -1,0 +1,17 @@
+{
+  "exec": "node -r ts-node/register/transpile-only ./src/dashboard-server/index.ts",
+  "env": {
+    "TS_NODE_PROJECT": "tsconfig.json"
+  },
+  "ext": "js,jsx,ts,tsx",
+  "ignore": [
+    ".git",
+    "node_modules/**/node_modules",
+    "src/dashboard-client/",
+    "src/minecraft-agent/",
+    "**/__test__/**/*.js",
+    "**/__test__/**/*.ts"
+  ],
+  "restartable": "rs",
+  "watch": ["src/dashboard-server", "src/shared"]
+}
