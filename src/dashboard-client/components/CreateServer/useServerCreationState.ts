@@ -10,7 +10,7 @@ interface State {
 
 const initialConfig: Minecraft.MachineConfig = {
   name: 'server',
-  machineType: 'n2-standard-2',
+  machineType: '',
   javaMemorySizeGb: 2,
   diskSizeGb: 50,
 };

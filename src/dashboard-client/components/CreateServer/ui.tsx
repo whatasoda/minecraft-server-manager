@@ -38,7 +38,7 @@ export default function CreateServerUI(props: CreateServerUIProps) {
     machineTypeOptions.forEach(({ name, description }) => {
       options.push({
         value: name,
-        label: `${name} - ${description}GB`,
+        label: `${name} - ${description}`,
       });
     });
     return (

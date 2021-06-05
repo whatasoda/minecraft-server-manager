@@ -1,11 +1,12 @@
 import React, { useCallback, useRef } from 'react';
 import useServerCreationState from './useServerCreationState';
-import useApiClient from '../../hooks/useApiClient';
-import minecraftServerService from '../../services/minecraft-server';
 import CreateServerUI from './ui';
+import { useServices } from '../../contexts/services';
 
 export default function CreateServer() {
-  const client = useApiClient(minecraftServerService, { createMachine: () => {} });
+  const {
+    minecraftServer: { createMachine },
+  } = useServices();
   const state = useServerCreationState();
   const stateRef = useRef(state);
 
@@ -16,7 +17,7 @@ export default function CreateServer() {
       // TODO: toaster
       return;
     }
-    const result = await client.createMachine(body);
+    const result = await createMachine(body);
     if (result.data) {
       // eslint-disable-next-line no-console
       console.log('hoge');
