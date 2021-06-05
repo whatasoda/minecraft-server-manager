@@ -1,6 +1,10 @@
 import React from 'react';
-import { Button, Card, H3, HTMLSelect, InputGroup, NumericInput, OptionProps } from '@blueprintjs/core';
-import { CreateServerUIProps } from './interfaces';
+import styled from 'styled-components';
+import { Classes, H3, OptionProps } from '@blueprintjs/core';
+import { CreateServerUIProps } from './container';
+import Card from '../_fragments/blueprint/Card';
+import { InputGroup, HTMLSelect, NumericInput } from '../_fragments/blueprint/inputs';
+import { Button } from '../_fragments/blueprint/buttons';
 
 const texts = {
   emptyOption: 'Choose Machine Type...',
@@ -8,17 +12,28 @@ const texts = {
 };
 
 export default function CreateServerUI(props: CreateServerUIProps) {
-  // const { machineTypeOptions, machineType } = props;
-  // const selectedMachineType = machineTypeOptions.get(machineType || '');
+  const { isLoading } = props;
   return (
-    <Card>
+    <StyledCard loading={isLoading} elevation={2}>
       <H3>Create New Server</H3>
-      {renderNameInput()}
-      {renderMachineTypeSelect()}
-      {renderJavaMemorySizeInput()}
-      {renderDiskSizeInput()}
-      {renderSubmitButton()}
-    </Card>
+      <StyledFieldLabel>
+        <span>Name:</span>
+        {renderNameInput()}
+      </StyledFieldLabel>
+      <StyledFieldLabel>
+        <span>Spec:</span>
+        {renderMachineTypeSelect()}
+      </StyledFieldLabel>
+      <StyledFieldLabel>
+        <span>Java Memory Size:</span>
+        {renderJavaMemorySizeInput()}
+      </StyledFieldLabel>
+      <StyledFieldLabel>
+        <span>Disk Size:</span>
+        {renderDiskSizeInput()}
+      </StyledFieldLabel>
+      <StyledButtonWrapper>{renderSubmitButton()}</StyledButtonWrapper>
+    </StyledCard>
   );
 
   function renderNameInput() {
@@ -54,11 +69,13 @@ export default function CreateServerUI(props: CreateServerUIProps) {
   function renderJavaMemorySizeInput() {
     const { javaMemorySizeGb, setJavaMemorySizeGb, isSizeUpdateLocked } = props;
     return (
-      <NumericInput
+      <StyledNumericInput
         value={javaMemorySizeGb}
+        unit="Gb"
         minorStepSize={null}
         min={0}
         disabled={isSizeUpdateLocked}
+        allowNumericCharactersOnly
         onValueChange={(value) => {
           setJavaMemorySizeGb(Math.floor(value));
         }}
@@ -68,11 +85,13 @@ export default function CreateServerUI(props: CreateServerUIProps) {
   function renderDiskSizeInput() {
     const { diskSizeGb, setDiskSizeGb, isSizeUpdateLocked } = props;
     return (
-      <NumericInput
+      <StyledNumericInput
         value={diskSizeGb}
+        unit="Gb"
         minorStepSize={null}
         min={0}
         disabled={isSizeUpdateLocked}
+        allowNumericCharactersOnly
         onValueChange={(value) => {
           setDiskSizeGb(Math.floor(value));
         }}
@@ -84,6 +103,7 @@ export default function CreateServerUI(props: CreateServerUIProps) {
     return (
       <Button
         disabled={!isReadyToRequest}
+        intent="primary"
         text={texts.submit}
         onClick={() => {
           requestCreation();
@@ -92,3 +112,32 @@ export default function CreateServerUI(props: CreateServerUIProps) {
     );
   }
 }
+
+const StyledCard = styled(Card)`
+  width: 300px;
+`;
+
+const StyledFieldLabel = styled.label`
+  display: block;
+  margin-bottom: 8px;
+  > span {
+    display: block;
+    margin-bottom: 4px;
+  }
+`;
+
+const StyledNumericInput = styled(NumericInput)<{ unit?: string }>`
+  .${Classes.INPUT_GROUP} {
+    width: 90px;
+  }
+  &::after {
+    content: '${({ unit }) => unit}';
+    display: block;
+    align-self: center;
+    margin-left: 8px;
+  }
+`;
+
+const StyledButtonWrapper = styled.div`
+  text-align: right;
+`;
