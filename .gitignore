@@ -3,3 +3,4 @@ node_modules
 dist
 zip
 oauth2.keys.json
+.sessions

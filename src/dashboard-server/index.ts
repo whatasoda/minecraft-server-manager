@@ -12,9 +12,15 @@ if (isProd) {
   app.set('trust proxy', 1);
 }
 
+const createDevSessionStore = () => {
+  const FileStore = (require('session-file-store') as typeof import('session-file-store'))(session);
+  return new FileStore({ path: './.sessions' });
+};
+
 app.use(express.json());
 app.use(
   session({
+    store: isProd ? undefined : createDevSessionStore(),
     secret: 'abcde', // TODO random secret, either generated here or build step
     cookie: {
       secure: isProd,
