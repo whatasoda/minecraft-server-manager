@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Switch } from 'react-router-dom';
-import CreateServer from '../components/CreateServer';
 import { AuthProvider } from '../contexts/auth';
+import Home from '../pages/Home';
 import { SecureRoute } from './SecureRoute';
 
 export default function Rotues() {
@@ -9,7 +9,7 @@ export default function Rotues() {
     <AuthProvider>
       <BrowserRouter>
         <Switch>
-          <SecureRoute path="/servers/create" component={CreateServer} />
+          <SecureRoute path="/" component={Home} />
         </Switch>
       </BrowserRouter>
     </AuthProvider>

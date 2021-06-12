@@ -24,7 +24,41 @@ export const ServiceProvider: React.FC = ({ children }) => {
             toast.success('Machine successfully created');
           },
           (message) => {
-            toast.danger(`Machine creation failed due to "${message}"`);
+            toast.danger(`Failed to create due to "${message}"`);
+          },
+        ),
+        startMachine: injectResultToast(
+          minecraftServerService.startMachine,
+          () => {
+            toast.success('Machine successfully started');
+          },
+          (message) => {
+            toast.danger(`Failed to start machine due to "${message}"`);
+          },
+        ),
+        stopMachine: injectResultToast(
+          minecraftServerService.stopMachine,
+          () => {
+            toast.success('Machine successfully stopped');
+          },
+          (message) => {
+            toast.danger(`Failed to stop machine due to "${message}"`);
+          },
+        ),
+        deleteMachine: injectResultToast(
+          minecraftServerService.deleteMachine,
+          () => {
+            toast.success('Machine successfully deleted');
+          },
+          (message) => {
+            toast.danger(`Failed to delete machine due to "${message}"`);
+          },
+        ),
+        status: injectResultToast(
+          minecraftServerService.status,
+          () => {},
+          (message) => {
+            toast.danger(`Failed to retrieve machine info due to "${message}"`);
           },
         ),
       },

@@ -14,7 +14,7 @@ const texts = {
 export default function CreateServerUI(props: CreateServerUIProps) {
   const { isLoading } = props;
   return (
-    <StyledCard loading={isLoading} elevation={2}>
+    <StyledCard loading={isLoading}>
       <H3>Create New Server</H3>
       <StyledFieldLabel>
         <span>Name:</span>

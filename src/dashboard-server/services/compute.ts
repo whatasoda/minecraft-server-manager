@@ -7,19 +7,14 @@ type InstanceInfo = Minecraft.MachineInfo;
 type MachineType = Minecraft.MachineType;
 type InstanceConfig = Omit<Minecraft.MachineConfig, 'name'>;
 
-const extractInstanceInfo = (vm: VM): InstanceInfo => {
+const extractInstanceInfo = ({ metadata: vm }: VM): InstanceInfo => {
   const {
     name,
     machineType,
     status,
-    networkInterfaces: [
-      {
-        networkIP: localIP,
-        accessConfigs: [{ natIP: globalIP }],
-      },
-    ],
+    networkInterfaces: [{ networkIP: localIP, accessConfigs: [{ natIP: globalIP }] = [{ natIP: undefined }] }],
     disks: [{ diskSizeGb: diskSize }],
-  } = vm as any;
+  } = vm;
   const metadata = vm.metadata.items as { key: string; value: string }[];
   const { javaMemorySize } = metadata.reduce<Record<string, string>>((acc, { key, value }) => {
     acc[key] = value;
@@ -141,14 +136,18 @@ const createInstanceConfig = ({
   return {
     machineType: `zones/${ZONE}/machineTypes/${machineType}`,
     tags: { items: ['minecraft-server'] },
-    networkInterfaces: [{ network: 'global/networks/default' }],
+    networkInterfaces: [
+      {
+        network: 'global/networks/default',
+        accessConfigs: [{ type: 'ONE_TO_ONE_NAT' }],
+      },
+    ],
     disks: [
       {
         type: 'PERSISTENT',
         mode: 'READ_WRITE',
         boot: true,
         initializeParams: {
-          diskName: 'boot',
           sourceImage: 'projects/ubuntu-os-cloud/global/images/family/ubuntu-1804-lts',
           diskSizeGb: `${diskSizeGb}`,
           diskType: `zones/${ZONE}/diskTypes/pd-ssd`,
