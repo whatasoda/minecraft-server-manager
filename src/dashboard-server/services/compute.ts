@@ -1,7 +1,10 @@
 import Compute, { Operation, VM } from '@google-cloud/compute';
+import path from 'path';
+import fs from 'fs-extra';
 import { AsyncResult, Result } from '../utils/result';
 
 const ZONE = 'asia-northeast1-a';
+const bucketName = '';
 
 type InstanceInfo = Minecraft.MachineInfo;
 type MachineType = Minecraft.MachineType;
@@ -105,7 +108,7 @@ export const createInstance = async (
   try {
     const zone = compute.zone(ZONE);
     const vm = zone.vm(vmName);
-    const [, operation] = (await vm.create(createInstanceConfig(config))) as [VM, Operation];
+    const [, operation] = (await vm.create(await createInstanceConfig(vmName, config))) as [VM, Operation];
     await operation.promise();
     return Result.ok({ message: 'success' });
   } catch (e) {
@@ -126,11 +129,10 @@ export const deleteInstance = async (compute: Compute, vmName: string): AsyncRes
 };
 
 // https://cloud.google.com/compute/docs/reference/rest/v1/instances
-const createInstanceConfig = ({
-  machineType = 'n2-standard-4',
-  diskSizeGb = 100,
-  javaMemorySizeGb = 10,
-}: InstanceConfig) => {
+const createInstanceConfig = async (
+  vmName: string,
+  { machineType = 'n2-standard-4', diskSizeGb = 100, javaMemorySizeGb = 10 }: InstanceConfig,
+) => {
   diskSizeGb = Math.floor(Math.max(10, diskSizeGb));
   javaMemorySizeGb = Math.floor(Math.max(2, javaMemorySizeGb));
   return {
@@ -156,7 +158,7 @@ const createInstanceConfig = ({
       },
     ],
     metadata: {
-      items: [{ key: 'javaMemorySize', value: `${javaMemorySizeGb}` }],
+      items: [{ key: 'startup-script', value: await createStartupScript(vmName, javaMemorySizeGb) }],
     },
     // "serviceAccounts": [
     //   {
@@ -172,4 +174,34 @@ const createInstanceConfig = ({
     // },
     deletionProtection: false,
   };
+};
+
+const mcsDir = (...fragments: string[]) => {
+  return path.resolve(__dirname, '../../mcs', ...fragments);
+};
+export const createStartupScript = async (vmName: string, javaMemorySize: number) => {
+  const [makefileTemplate, startupTemplate] = await Promise.all([
+    fs.readFile(mcsDir('Makefile'), 'utf-8'),
+    fs.readFile(mcsDir('startup.sh'), 'utf-8'),
+  ]);
+
+  javaMemorySize = Math.floor(javaMemorySize);
+  const variables = {
+    BUCKET_NAME: bucketName,
+    JAVA_MEM_SIZE: isNaN(javaMemorySize) ? null : javaMemorySize,
+    SERVER_NAME: vmName,
+  };
+  const makefile = makefileTemplate.replace(
+    '####_VARIABLE_DEFINITION_####',
+    Object.entries(variables).reduce((acc, [key, value]) => {
+      if (value !== null) {
+        acc += `${key}=${value}`;
+      }
+      return acc;
+    }, ''),
+  );
+
+  const startup = startupTemplate.replace('####_MAKEFILE_####', makefile);
+
+  return startup;
 };
