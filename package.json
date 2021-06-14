@@ -19,7 +19,7 @@
     "url": "https://github.com/whatasoda/minecraft-server-manager/issues"
   },
   "homepage": "https://github.com/whatasoda/minecraft-server-manager#readme",
-  "dashboard-server": {
+  "server": {
     "scripts": {},
     "dependencies": {
       "@google-cloud/common": true,

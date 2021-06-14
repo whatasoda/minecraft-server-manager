@@ -12,7 +12,7 @@ const rootdir = (...fragments) => {
 
 const targets = {
   mcs: rootdir('src/mcs'),
-  'dashboard-server': rootdir('dist'),
+  server: rootdir('dist'),
 };
 
 fs.mkdirSync(rootdir('dist'), { recursive: true });

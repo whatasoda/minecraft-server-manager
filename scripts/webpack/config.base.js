@@ -6,7 +6,7 @@ const root = path.resolve(__dirname, '../../');
 
 /** @type {import('webpack').Configuration} */
 module.exports = {
-  entry: path.resolve(root, 'src/dashboard-client/index.tsx'),
+  entry: path.resolve(root, 'src/client/index.tsx'),
   output: {
     path: path.resolve(root, 'dist/public'),
     publicPath: '/',
@@ -19,7 +19,7 @@ module.exports = {
   plugins: [
     new CleanWebpackPlugin({ cleanAfterEveryBuildPatterns: ['!**/*'] }),
     new HtmlWebpackPlugin({
-      template: path.resolve(root, 'src/dashboard-client/template.html'),
+      template: path.resolve(root, 'src/client/template.html'),
     }),
   ],
   resolve: {
