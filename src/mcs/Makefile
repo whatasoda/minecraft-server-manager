@@ -32,7 +32,7 @@ define screen-execute
 	fi
 endef
 
-init:
+startup:
 	@# NOTE: `sudo apt update` will be executed by startup script
 	@curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash -
 	@sudo apt-get install -y openjdk-8-jdk-headless zip screen jq nodejs
@@ -41,6 +41,10 @@ init:
 	@$(MAKE) load-minecraft-data
 	@$(MAKE) start-minecraft
 	@$(MAKE) start-agent
+
+shutdown:
+	@$(MAKE) stop-minecraft
+	@$(MAKE) kill-agent
 
 download-repo:
 	@echo "Downloading repo..."

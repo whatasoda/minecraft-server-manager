@@ -158,7 +158,10 @@ const createInstanceConfig = async (
       },
     ],
     metadata: {
-      items: [{ key: 'startup-script', value: await createStartupScript(vmName, javaMemorySizeGb) }],
+      items: [
+        { key: 'startup-script', value: await createStartupScript(vmName, javaMemorySizeGb) },
+        { key: 'shutdown-script', value: await createShutdownScript() },
+      ],
     },
     // "serviceAccounts": [
     //   {
@@ -204,4 +207,8 @@ export const createStartupScript = async (vmName: string, javaMemorySize: number
   const startup = startupTemplate.replace('####_MAKEFILE_####', makefile);
 
   return startup;
+};
+
+const createShutdownScript = async () => {
+  return await fs.readFile(mcsDir('Makefile'), 'utf-8');
 };

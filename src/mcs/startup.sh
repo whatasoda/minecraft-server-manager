@@ -4,4 +4,6 @@ cat <<'EOF' > Makefile
 ####_MAKEFILE_####
 EOF
 
-sudo apt update && sudo apt-get install -y make && make init
+sudo apt update
+sudo apt-get install -y make
+make startup
