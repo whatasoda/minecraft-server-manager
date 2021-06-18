@@ -2,7 +2,7 @@ import React, { createContext, useContext, useMemo } from 'react';
 import ResponseResult from '../../shared/responseResult';
 import toast from '../components/_overlays/toast';
 import authService from '../services/auth';
-import mcsService from '../services/minecraft-server';
+import mcsService from '../services/mcs';
 import userService from '../services/user';
 
 const base = {

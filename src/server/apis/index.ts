@@ -1,6 +1,6 @@
 import express from 'express';
 import auth from './auth';
-import mcs from './minecraft-server';
+import mcs from './mcs';
 import user from './user';
 
 const api = express();

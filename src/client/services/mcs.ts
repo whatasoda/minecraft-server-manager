@@ -1,4 +1,4 @@
-import type { mcsApis } from '../../server/apis/minecraft-server';
+import type { mcsApis } from '../../server/apis/mcs';
 import apiClientFactory from '../../shared/apiClientFactory';
 
 const mcs = apiClientFactory(fetch, '/api/mcs');
