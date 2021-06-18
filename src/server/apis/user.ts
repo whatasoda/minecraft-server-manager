@@ -1,11 +1,19 @@
 import express from 'express';
+import defineExpressEndpoint from '../../shared/expressEndpoint';
 import { withAuth } from './auth';
 
-const user = express();
+const user = express().use(withAuth());
 export default user;
 
-user.use(withAuth());
+interface Requests {
+  '/profile': {};
+}
+const userApi = {
+  '/profile': defineExpressEndpoint('/profile', async (_p, _r: Requests['/profile']) => {
+    return {};
+  }),
+};
 
-user.get('/profile', (_, res) => {
-  res.status(200).json({ data: {} });
-});
+userApi['/profile'](user, 'get');
+
+export type { userApi };

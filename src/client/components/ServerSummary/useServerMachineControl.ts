@@ -4,10 +4,10 @@ import { serverSummaryLoadingGroup } from './container';
 
 const { useLoading } = serverSummaryLoadingGroup;
 
-export default function useServerMachineControl(name: string, machineInfo?: Minecraft.MachineInfo) {
+export default function useServerMachineControl(instance: string, machineInfo?: Minecraft.MachineInfo) {
   const [isDeleted, setIsDeleted] = useState(false);
   const [info, setInfo] = useState(machineInfo || null);
-  const { minecraftServer: client } = useServices();
+  const { mcs } = useServices();
 
   const { isLoading, setLoading } = useLoading();
 
@@ -15,9 +15,9 @@ export default function useServerMachineControl(name: string, machineInfo?: Mine
   const refreshInfo = async () => {
     if (canRefreshInfo) {
       setLoading('refreshInfo', true);
-      const result = await client.status({ name });
+      const result = await mcs.status({ instance }, {});
       if (result.error === null) {
-        setInfo(result.data.machine);
+        setInfo(result.data);
       }
       setLoading('refreshInfo', false);
     }
@@ -27,7 +27,7 @@ export default function useServerMachineControl(name: string, machineInfo?: Mine
   const startMachine = async () => {
     if (canStartMachine) {
       setLoading('startMachine', true);
-      const result = await client.startMachine({ name });
+      const result = await mcs.start({ instance }, {});
       if (result.error === null) {
         await refreshInfo();
       }
@@ -39,7 +39,7 @@ export default function useServerMachineControl(name: string, machineInfo?: Mine
   const stopMachine = async () => {
     if (canStopMachine) {
       setLoading('stopMachine', true);
-      const result = await client.stopMachine({ name });
+      const result = await mcs.stop({ instance }, {});
       if (result.error === null) {
         await refreshInfo();
       }
@@ -51,7 +51,7 @@ export default function useServerMachineControl(name: string, machineInfo?: Mine
   const deleteMachine = async () => {
     if (canDeleteMachine) {
       setLoading('deleteMachine', true);
-      const result = await client.deleteMachine({ name });
+      const result = await mcs.delete({ instance }, {});
       if (result.error === null) {
         setIsDeleted(true);
       }

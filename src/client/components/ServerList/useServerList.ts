@@ -5,13 +5,11 @@ export default function useServerList() {
   const [list, setList] = useState<Minecraft.MachineInfo[]>([]);
   const pageToken = useRef<string>();
   const refreshCount = useRef<number>(0);
-  const {
-    minecraftServer: { listMachines },
-  } = useServices();
+  const { mcs } = useServices();
 
   const loadMoreServers = useCallback(async () => {
     const prevToken = pageToken.current;
-    const result = await listMachines({ pageToken: prevToken });
+    const result = await mcs.list({}, { pageToken: prevToken });
     if (result.error === null) {
       const { machines, nextQuery } = result.data;
       pageToken.current = nextQuery;

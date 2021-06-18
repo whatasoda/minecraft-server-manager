@@ -1,13 +1,13 @@
 import React, { createContext, useContext, useMemo } from 'react';
-import { Result } from '../../dashboard-server/utils/result';
+import ResponseResult from '../../shared/responseResult';
 import toast from '../components/_overlays/toast';
 import authService from '../services/auth';
-import minecraftServerService from '../services/minecraft-server';
+import mcsService from '../services/minecraft-server';
 import userService from '../services/user';
 
 const base = {
   auth: authService,
-  minecraftServer: minecraftServerService,
+  mcs: mcsService,
   user: userService,
 };
 const ServiceContext = createContext(base);
@@ -16,48 +16,48 @@ export const ServiceProvider: React.FC = ({ children }) => {
   const value = useMemo<typeof base>(() => {
     return {
       auth: authService,
-      minecraftServer: {
-        ...minecraftServerService,
-        createMachine: injectResultToast(
-          minecraftServerService.createMachine,
+      mcs: {
+        ...mcsService,
+        create: injectResultToast(
+          mcsService.create,
           () => {
             toast.success('Machine successfully created');
           },
-          (message) => {
+          (_, message) => {
             toast.danger(`Failed to create due to "${message}"`);
           },
         ),
-        startMachine: injectResultToast(
-          minecraftServerService.startMachine,
+        start: injectResultToast(
+          mcsService.start,
           () => {
             toast.success('Machine successfully started');
           },
-          (message) => {
+          (_, message) => {
             toast.danger(`Failed to start machine due to "${message}"`);
           },
         ),
-        stopMachine: injectResultToast(
-          minecraftServerService.stopMachine,
+        stop: injectResultToast(
+          mcsService.stop,
           () => {
             toast.success('Machine successfully stopped');
           },
-          (message) => {
+          (_, message) => {
             toast.danger(`Failed to stop machine due to "${message}"`);
           },
         ),
-        deleteMachine: injectResultToast(
-          minecraftServerService.deleteMachine,
+        delete: injectResultToast(
+          mcsService.delete,
           () => {
             toast.success('Machine successfully deleted');
           },
-          (message) => {
+          (_, message) => {
             toast.danger(`Failed to delete machine due to "${message}"`);
           },
         ),
         status: injectResultToast(
-          minecraftServerService.status,
+          mcsService.status,
           () => {},
-          (message) => {
+          (_, message) => {
             toast.danger(`Failed to retrieve machine info due to "${message}"`);
           },
         ),
@@ -69,17 +69,17 @@ export const ServiceProvider: React.FC = ({ children }) => {
   }, []);
 
   return <ServiceContext.Provider value={value} children={children} />;
-  function injectResultToast<T extends any, U extends any[]>(
-    fn: (...args: U) => Promise<Result<T>>,
+  function injectResultToast<T extends {}, U extends any[]>(
+    fn: (...args: U) => Promise<ResponseResult.Result<T>>,
     success: (data: T) => void,
-    error: (message: string) => void,
+    error: (status: number, message: string) => void,
   ): typeof fn {
     return async (...args: U) => {
       const result = await fn(...args);
       if (result.error === null) {
         success(result.data);
       } else {
-        error(Result.error(result.error).error);
+        error(result.error.status, result.error.message);
       }
       return result;
     };

@@ -1,13 +1,11 @@
 import Compute, { Operation, VM } from '@google-cloud/compute';
 import path from 'path';
 import fs from 'fs-extra';
-import { AsyncResult, Result } from '../utils/result';
 
 const ZONE = 'asia-northeast1-a';
 const bucketName = '';
 
 type InstanceInfo = Minecraft.MachineInfo;
-type MachineType = Minecraft.MachineType;
 type InstanceConfig = Omit<Minecraft.MachineConfig, 'name'>;
 
 const extractInstanceInfo = ({ metadata: vm }: VM): InstanceInfo => {
@@ -38,94 +36,57 @@ const extractInstanceInfo = ({ metadata: vm }: VM): InstanceInfo => {
 export const listInstances = async (
   compute: Compute,
   pageToken: string | undefined,
-): AsyncResult<{ instances: InstanceInfo[]; nextQuery?: string }> => {
-  try {
-    const zone = compute.zone(ZONE);
-    const [vms, nextQuery] = await zone.getVMs({ pageToken });
-    const instances = vms.map((vm) => extractInstanceInfo(vm));
-    return Result.ok({ instances, nextQuery });
-  } catch (e) {
-    return Result.error(e);
-  }
+): Promise<{
+  instances: InstanceInfo[];
+  nextQuery: string | undefined;
+}> => {
+  const zone = compute.zone(ZONE);
+  const [vms, nextQuery] = await zone.getVMs({ pageToken });
+  const instances = vms.map((vm) => extractInstanceInfo(vm));
+  return { instances, nextQuery };
 };
 
-export const listMachineTypes = async (compute: Compute): AsyncResult<{ machineTypes: MachineType[] }> => {
-  try {
-    const zone = compute.zone(ZONE);
-    const [res] = await zone.getMachineTypes({ autoPaginate: true });
-    const machineTypes = res.map<MachineType>(({ name, description, maximumPersistentDisksSizeGb, memoryMb }) => ({
-      name,
-      description,
-      memoryGb: memoryMb / 1024,
-      maximumPersistentDisksSizeGb,
-    }));
-    return Result.ok({ machineTypes });
-  } catch (e) {
-    return Result.error(e);
-  }
+export const getInstanceInfo = async (compute: Compute, vmName: string): Promise<InstanceInfo> => {
+  const zone = compute.zone(ZONE);
+  const vm = zone.vm(vmName);
+  const [res] = await vm.get();
+  return extractInstanceInfo(res);
 };
 
-export const getInstance = async (compute: Compute, vmName: string): AsyncResult<InstanceInfo> => {
-  try {
-    const zone = compute.zone(ZONE);
-    const vm = zone.vm(vmName);
-    const [res] = await vm.get();
-    return Result.ok<InstanceInfo>(extractInstanceInfo(res));
-  } catch (e) {
-    return Result.error(e);
-  }
+export const startInstance = async (compute: Compute, vmName: string): Promise<{ message: string }> => {
+  const zone = compute.zone(ZONE);
+  const vm = zone.vm(vmName);
+  const [operation] = await vm.start();
+  await operation.promise();
+  return { message: 'success' };
 };
 
-export const startInstance = async (compute: Compute, vmName: string): AsyncResult<{ message: string }> => {
-  try {
-    const zone = compute.zone(ZONE);
-    const vm = zone.vm(vmName);
-    const [operation] = await vm.start();
-    await operation.promise();
-    return Result.ok({ message: 'success' });
-  } catch (e) {
-    return Result.error(e);
-  }
-};
-
-export const stopInstance = async (compute: Compute, vmName: string): AsyncResult<{ message: string }> => {
-  try {
-    const zone = compute.zone(ZONE);
-    const vm = zone.vm(vmName);
-    const [operation] = await vm.stop();
-    await operation.promise();
-    return Result.ok({ message: 'success' });
-  } catch (e) {
-    return Result.error(e);
-  }
+export const stopInstance = async (compute: Compute, vmName: string): Promise<{ message: string }> => {
+  const zone = compute.zone(ZONE);
+  const vm = zone.vm(vmName);
+  const [operation] = await vm.stop();
+  await operation.promise();
+  return { message: 'success' };
 };
 
 export const createInstance = async (
   compute: Compute,
   vmName: string,
   config: InstanceConfig,
-): AsyncResult<{ message: string }> => {
-  try {
-    const zone = compute.zone(ZONE);
-    const vm = zone.vm(vmName);
-    const [, operation] = (await vm.create(await createInstanceConfig(vmName, config))) as [VM, Operation];
-    await operation.promise();
-    return Result.ok({ message: 'success' });
-  } catch (e) {
-    return Result.error(e);
-  }
+): Promise<{ message: string }> => {
+  const zone = compute.zone(ZONE);
+  const vm = zone.vm(vmName);
+  const [, operation] = (await vm.create(await createInstanceConfig(vmName, config))) as [VM, Operation];
+  await operation.promise();
+  return { message: 'success' };
 };
 
-export const deleteInstance = async (compute: Compute, vmName: string): AsyncResult<{ message: string }> => {
-  try {
-    const zone = compute.zone(ZONE);
-    const vm = zone.vm(vmName);
-    const [operation] = ((await vm.delete()) as unknown) as [Operation, {}];
-    await operation.promise();
-    return Result.ok({ message: 'success' });
-  } catch (e) {
-    return Result.error(e);
-  }
+export const deleteInstance = async (compute: Compute, vmName: string): Promise<{ message: string }> => {
+  const zone = compute.zone(ZONE);
+  const vm = zone.vm(vmName);
+  const [operation] = (await vm.delete()) as unknown as [Operation, {}];
+  await operation.promise();
+  return { message: 'success' };
 };
 
 // https://cloud.google.com/compute/docs/reference/rest/v1/instances

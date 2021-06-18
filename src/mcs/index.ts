@@ -5,12 +5,12 @@ import { makeLogPath, makeDispatch, makeStream } from './make';
 const app = express();
 app.use(express.json());
 
-app.get('/log/:target', (req, res) => {
+app.get('/api/log/:target', (req, res) => {
   const { target } = req.params;
   res.sendFile(makeLogPath(target));
 });
 
-app.post('/make-dispatch/:target', async (req, res) => {
+app.post('/api/make-dispatch/:target', async (req, res) => {
   const { target } = req.params;
   try {
     await makeDispatch(target, req.body);
@@ -21,7 +21,7 @@ app.post('/make-dispatch/:target', async (req, res) => {
   }
 });
 
-app.get('/make-stream/:target', (req, res) => {
+app.get('/api/make-stream/:target', (req, res) => {
   const { target } = req.params;
   try {
     makeStream(res, target, req.query as Record<string, string>);

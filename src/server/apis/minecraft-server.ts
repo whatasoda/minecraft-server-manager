@@ -1,181 +1,113 @@
-import Compute from '@google-cloud/compute';
-import express, { Request, Response } from 'express';
+import express from 'express';
+import type { Request, Response } from 'express-serve-static-core';
+import { request } from 'http';
 import { withAuth } from './auth';
 import {
   createInstance,
   deleteInstance,
-  getInstance,
+  getInstanceInfo,
   listInstances,
-  listMachineTypes,
   startInstance,
   stopInstance,
 } from '../services/compute';
-import { Result } from '../utils/result';
+import defineExpressEndpoint from '../../shared/expressEndpoint';
 
-declare global {
-  namespace Dashboard {
-    namespace MinecraftServer {
-      interface GetReq$ListMachines {
-        pageToken?: string;
-      }
-      type GetRes$ListMachines = Result<{ machines: Minecraft.MachineInfo[]; nextQuery: string }>;
+const mcs = express().use(withAuth());
+export default mcs;
 
-      interface GetReq$ListMachineTypes {}
-      type GetRes$ListMachineTypes = Result<{ machineTypes: Minecraft.MachineType[] }>;
+const define = defineExpressEndpoint;
 
-      interface PostReq$CreateMachine extends Minecraft.MachineConfig {
-        name: string;
-        machineType: string;
-        diskSizeGb: number;
-        javaMemorySizeGb: number;
-      }
-      type PostRes$CreateMachine = Result<{ message: string }>;
-
-      interface PostReq$StartMachine {
-        name: string;
-      }
-      type PostRes$StartMachine = Result<{ message: string }>;
-
-      interface PostReq$StopMachine {
-        name: string;
-      }
-      type PostRes$StopMachine = Result<{ message: string }>;
-
-      interface PostReq$DeleteMachine {
-        name: string;
-      }
-      type PostRes$DeleteMachine = Result<{ message: string }>;
-
-      interface GetReq$Status {
-        name: string;
-      }
-      type GetRes$Status = Result<{ machine: Minecraft.MachineInfo }>;
-
-      interface PostReq$Start {
-        name: string;
-      }
-      interface PostRes$Start {
-        message: string;
-      }
-
-      interface PostReq$Stop {
-        name: string;
-      }
-      interface PostRes$Stop {
-        message: string;
-      }
-
-      interface PostReq$Save {
-        name: string;
-      }
-      interface PostReq$RefreshData {
-        name: string;
-        policy: Minecraft.DataRefreshPolicy;
-      }
-      interface GetReq$List {}
-      interface PostReq$Command {
-        name: string;
-      }
-      interface GetReq$Log {
-        name: string;
-      }
-      interface GetReq$LogEvents {
-        name: string;
-      }
-    }
-  }
+interface Requests {
+  '/list': {
+    pageToken?: string;
+  };
+  '/create': {
+    name: string;
+    machineType: string;
+    diskSizeGb: number;
+    javaMemorySizeGb: number;
+  };
+  '/:instance/start': {};
+  '/:instance/stop': {};
+  '/:instance/delete': {};
+  '/:instance/status': {};
+  '/:instance/log/:target': {};
+  '/:instance/make-dispatch/:target': {};
+  '/:instance/make-stream/:target': {};
 }
 
-import Decls = Dashboard.MinecraftServer;
-
-const jsonResponse = async <T>(res: Response, impl: () => T | Promise<T>) => {
-  try {
-    const result = await impl();
-    res.status(200).json(result);
-  } catch (e) {
-    res.status(500).json('Internal Server Error');
-  }
+const apis = {
+  '/list': define('/list', async (_params, req: Requests['/list'], extra) => {
+    const { pageToken } = req;
+    const compute = extra.compute!;
+    const data = await listInstances(compute, pageToken);
+    return { machines: data.instances, nextQuery: data.nextQuery };
+  }),
+  '/create': define('/create', async (_params, req: Requests['/create'], extra) => {
+    const { name, machineType, diskSizeGb, javaMemorySizeGb } = req;
+    const compute = extra.compute!;
+    const data = await createInstance(compute, name, { machineType, diskSizeGb, javaMemorySizeGb });
+    return data;
+  }),
+  '/:instance/start': define('/:instance/start', async (params, _req: Requests['/:instance/start'], extra) => {
+    const { instance } = params;
+    const compute = extra.compute!;
+    const data = await startInstance(compute, instance!);
+    return data;
+  }),
+  '/:instance/stop': define('/:instance/stop', async (params, _req: Requests['/:instance/stop'], extra) => {
+    const { instance } = params;
+    const compute = extra.compute!;
+    const data = await stopInstance(compute, instance!);
+    return data;
+  }),
+  '/:instance/delete': define('/:instance/delete', async (params, _req: Requests['/:instance/delete'], extra) => {
+    const { instance } = params;
+    const compute = extra.compute!;
+    const data = await deleteInstance(compute, instance!);
+    return data;
+  }),
+  '/:instance/status': define('/:instance/status', async (params, _req: Requests['/:instance/status'], extra) => {
+    const { instance } = params;
+    const compute = extra.compute!;
+    const data = await getInstanceInfo(compute, instance!);
+    return data;
+  }),
+  // 'path': define('path', async (params, req: Requests['path'], extra) => {}),
 };
 
-const authCompute = (req: Request) => {
-  return new Compute({ projectId: 'whatasoda-mc-server', authClient: req.authClient });
+apis['/list'](mcs, 'get');
+apis['/create'](mcs, 'post');
+apis['/:instance/start'](mcs, 'post');
+apis['/:instance/stop'](mcs, 'post');
+apis['/:instance/delete'](mcs, 'post');
+apis['/:instance/status'](mcs, 'get');
+
+const PROJECT_ID = '';
+const ZONE = 'asia-northeast1-a';
+
+const proxyToInstance = (createPath: (target: string) => string) => {
+  return (req: Request, res: Response) => {
+    const { instance, target } = req.params;
+    request({
+      host: `${instance}.${ZONE}.c.${PROJECT_ID}.internal`,
+      port: 8000,
+      path: createPath(target),
+    }).pipe(res);
+  };
 };
 
-const minecraftServer = express().use(withAuth());
-export default minecraftServer;
+mcs.get(
+  '/:instance/log/:target',
+  proxyToInstance((target) => `/api/log/${target}`),
+);
+mcs.post(
+  '/:instance/make-dispatch/:target',
+  proxyToInstance((target) => `/api/make-dispatch/${target}`),
+);
+mcs.get(
+  '/:instance/make-stream/:target',
+  proxyToInstance((target) => `/api/make-stream/${target}`),
+);
 
-minecraftServer.get('/list-machines', async (req, res) => {
-  jsonResponse<Decls.GetRes$ListMachines>(res, async () => {
-    const compute = authCompute(req);
-    const { pageToken }: Decls.GetReq$ListMachines = req.query;
-    const result = await listInstances(compute, pageToken);
-    if (result.data) {
-      return { error: null, data: { machines: result.data.instances, nextQuery: result.data.nextQuery } };
-    } else {
-      return { error: result.error, data: null } as any;
-    }
-  });
-});
-minecraftServer.post('/list-machine-types', async (req, res) => {
-  jsonResponse<Decls.GetRes$ListMachineTypes>(res, async () => {
-    const compute = authCompute(req);
-    // const {}: Decls.GetReq$ListMachineTypes = req.body;
-    const result = await listMachineTypes(compute);
-    return result;
-  });
-});
-minecraftServer.post('/create-machine', async (req, res) => {
-  jsonResponse<Decls.PostRes$CreateMachine>(res, async () => {
-    const compute = authCompute(req);
-    const { name, machineType, diskSizeGb, javaMemorySizeGb }: Decls.PostReq$CreateMachine = req.body;
-    const result = await createInstance(compute, name, { machineType, diskSizeGb, javaMemorySizeGb });
-    return result;
-  });
-});
-minecraftServer.post('/start-machine', async (req, res) => {
-  jsonResponse<Decls.PostRes$StartMachine>(res, async () => {
-    const compute = authCompute(req);
-    const { name }: Decls.PostReq$StartMachine = req.body;
-    const result = await startInstance(compute, name);
-    return result;
-  });
-});
-minecraftServer.post('/stop-machine', async (req, res) => {
-  jsonResponse<Decls.PostRes$StopMachine>(res, async () => {
-    const compute = authCompute(req);
-    const { name }: Decls.PostReq$StopMachine = req.body;
-    const result = await stopInstance(compute, name);
-    return result;
-  });
-});
-minecraftServer.post('/delete-machine', async (req, res) => {
-  jsonResponse<Decls.PostRes$DeleteMachine>(res, async () => {
-    const compute = authCompute(req);
-    const { name }: Decls.PostReq$DeleteMachine = req.body;
-    const result = await deleteInstance(compute, name);
-    return result;
-  });
-});
-minecraftServer.get('/status', async (req, res) => {
-  jsonResponse<Decls.GetRes$Status>(res, async () => {
-    const compute = authCompute(req);
-    const { name }: Decls.GetReq$Status = req.query as any;
-    const instance = await getInstance(compute, name);
-    if (!instance.data) {
-      return Result.error(instance.error);
-    }
-    // const { localIP } = instance.data;
-    // TODO: fetch server
-    return Result.ok({ machine: instance.data });
-  });
-});
-
-minecraftServer.post('/start');
-minecraftServer.post('/stop');
-minecraftServer.post('/save');
-minecraftServer.post('/refresh-data');
-// minecraftServer.get('/status-events');
-minecraftServer.get('/list');
-minecraftServer.post('/command');
-minecraftServer.get('/log');
-minecraftServer.get('/log-events');
+export type { apis };

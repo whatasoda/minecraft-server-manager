@@ -24,9 +24,7 @@ export interface CreateServerUIProps {
 }
 
 export default function CreateServer(_props: CreateServerProps) {
-  const {
-    minecraftServer: { createMachine },
-  } = useServices();
+  const { mcs } = useServices();
   const serverCreationState = useServerCreationState();
   const { isLoadingSome, setLoading } = useLoading<'create'>('mixed');
   const state = {
@@ -48,7 +46,7 @@ export default function CreateServer(_props: CreateServerProps) {
       return;
     }
     setLoading('create', true);
-    const result = await createMachine(body);
+    const result = await mcs.create({}, body);
     setLoading('create', false);
     if (result.data) {
       actions.clear();
