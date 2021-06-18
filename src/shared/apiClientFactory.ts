@@ -1,10 +1,18 @@
 import type { EndpointDefinition, PathParams } from './endpointFactory';
 import type ResponseResult from './responseResult';
 
+type RequestFuncOf<D extends EndpointDefinition<string, any, any>> = D extends EndpointDefinition<
+  any,
+  infer Req,
+  infer Res
+>
+  ? (params: PathParams<D['path']>, reqBody: Req) => Promise<ResponseResult.Result<Res>>
+  : never;
+
 export default function apiClientFactory(fetch: Window['fetch'], baseUrl: string) {
   baseUrl = trimTailingSlash(baseUrl);
 
-  return function createApi<D extends EndpointDefinition<string, any, any>>(path: D['path'], method: 'GET' | 'POST') {
+  const createApi = <D extends EndpointDefinition<string, any, any>>(path: D['path'], method: 'GET' | 'POST') => {
     type Params = PathParams<D['path']>;
     type Req = D extends EndpointDefinition<any, infer T, any> ? T : never;
     type Res = D extends EndpointDefinition<any, any, infer T> ? T : never;
@@ -51,6 +59,23 @@ export default function apiClientFactory(fetch: Window['fetch'], baseUrl: string
       throw new Error(`${method} is not allowed to method type for now.`);
     }
   };
+  type EndpointRecordBase = Partial<Record<string, { definition: EndpointDefinition<string, any, any> }>>;
+  createApi.many = <D extends EndpointRecordBase>() => {
+    return <T extends Record<string, [path: NonNullable<D[keyof D]>['definition']['path'], method: 'GET' | 'POST']>>(
+      endpoints: T,
+    ) => {
+      const endpointEntries = Object.entries(endpoints) as [string, [path: string, method: 'GET' | 'POST']][];
+      type AccType = Record<string, RequestFuncOf<EndpointDefinition<string, any, any>>>;
+      return endpointEntries.reduce<AccType>((acc, [key, [path, method]]) => {
+        acc[key] = createApi(path, method);
+        return acc;
+      }, {}) as {
+        [K in keyof T]: RequestFuncOf<NonNullable<D[T[K][0]]>['definition']>;
+      };
+    };
+  };
+
+  return createApi;
 }
 
 const buildPathWithParam = (path: string, params: PathParams<string>) => {

@@ -15,8 +15,6 @@ import defineExpressEndpoint from '../../shared/expressEndpoint';
 const mcs = express().use(withAuth());
 export default mcs;
 
-const define = defineExpressEndpoint;
-
 interface Requests {
   '/list': {
     pageToken?: string;
@@ -31,57 +29,53 @@ interface Requests {
   '/:instance/stop': {};
   '/:instance/delete': {};
   '/:instance/status': {};
-  '/:instance/log/:target': {};
-  '/:instance/make-dispatch/:target': {};
-  '/:instance/make-stream/:target': {};
 }
 
-const apis = {
-  '/list': define('/list', async (_params, req: Requests['/list'], extra) => {
+const mcsApis = defineExpressEndpoint.many<Requests>()({
+  '/list': async (_params, req, extra) => {
     const { pageToken } = req;
     const compute = extra.compute!;
     const data = await listInstances(compute, pageToken);
-    return { machines: data.instances, nextQuery: data.nextQuery };
-  }),
-  '/create': define('/create', async (_params, req: Requests['/create'], extra) => {
+    return data;
+  },
+  '/create': async (_params, req, extra) => {
     const { name, machineType, diskSizeGb, javaMemorySizeGb } = req;
     const compute = extra.compute!;
     const data = await createInstance(compute, name, { machineType, diskSizeGb, javaMemorySizeGb });
     return data;
-  }),
-  '/:instance/start': define('/:instance/start', async (params, _req: Requests['/:instance/start'], extra) => {
+  },
+  '/:instance/start': async (params, _req, extra) => {
     const { instance } = params;
     const compute = extra.compute!;
     const data = await startInstance(compute, instance!);
     return data;
-  }),
-  '/:instance/stop': define('/:instance/stop', async (params, _req: Requests['/:instance/stop'], extra) => {
+  },
+  '/:instance/stop': async (params, _req, extra) => {
     const { instance } = params;
     const compute = extra.compute!;
     const data = await stopInstance(compute, instance!);
     return data;
-  }),
-  '/:instance/delete': define('/:instance/delete', async (params, _req: Requests['/:instance/delete'], extra) => {
+  },
+  '/:instance/delete': async (params, _req, extra) => {
     const { instance } = params;
     const compute = extra.compute!;
     const data = await deleteInstance(compute, instance!);
     return data;
-  }),
-  '/:instance/status': define('/:instance/status', async (params, _req: Requests['/:instance/status'], extra) => {
+  },
+  '/:instance/status': async (params, _req, extra) => {
     const { instance } = params;
     const compute = extra.compute!;
     const data = await getInstanceInfo(compute, instance!);
     return data;
-  }),
-  // 'path': define('path', async (params, req: Requests['path'], extra) => {}),
-};
+  },
+});
 
-apis['/list'](mcs, 'get');
-apis['/create'](mcs, 'post');
-apis['/:instance/start'](mcs, 'post');
-apis['/:instance/stop'](mcs, 'post');
-apis['/:instance/delete'](mcs, 'post');
-apis['/:instance/status'](mcs, 'get');
+mcsApis['/list'](mcs, 'get');
+mcsApis['/create'](mcs, 'post');
+mcsApis['/:instance/start'](mcs, 'post');
+mcsApis['/:instance/stop'](mcs, 'post');
+mcsApis['/:instance/delete'](mcs, 'post');
+mcsApis['/:instance/status'](mcs, 'get');
 
 const PROJECT_ID = '';
 const ZONE = 'asia-northeast1-a';
@@ -110,4 +104,4 @@ mcs.get(
   proxyToInstance((target) => `/api/make-stream/${target}`),
 );
 
-export type { apis };
+export type { mcsApis };

@@ -43,6 +43,19 @@ export interface DefineEndpoint<A extends any[], F> {
     path: P,
     handler: RequestHandlerDefinition<P, Req, Res>,
   ): CreateEndpoint<P, Req, Res, A, F>;
+  many<ReqMap extends {}>(): {
+    <
+      T extends {
+        [P in Extract<keyof ReqMap, string>]: RequestHandlerDefinition<P, ReqMap[P], any>;
+      },
+    >(
+      definitions: T,
+    ): {
+      [P in Extract<keyof ReqMap, string>]: T[P] extends RequestHandlerDefinition<P, ReqMap[P], infer Res>
+        ? CreateEndpoint<P, ReqMap[P], Res, A, F>
+        : never;
+    };
+  };
 }
 
 export interface CreateEndpoint<P extends string, Req extends Body, Res extends Body, A extends any[], F> {
@@ -56,13 +69,11 @@ export class ApiError extends Error {
   }
 }
 
-export default function createEndpointFactory<A extends any[], F>(
-  adopter: EndpointAdopter<A, F>,
-): DefineEndpoint<A, F> {
-  return function defineEndpoint<P extends string, Req extends Body, Res extends Body>(
+export default function createEndpointFactory<A extends any[], F>(adopter: EndpointAdopter<A, F>) {
+  const defineEndpoint: DefineEndpoint<A, F> = <P extends string, Req extends Body, Res extends Body>(
     path: P,
     handlerDefinition: RequestHandlerDefinition<P, Req, Res>,
-  ) {
+  ) => {
     const createEndpoint: CreateEndpoint<P, Req, Res, A, F> = (...args: A) => {
       return adopter(createEndpoint.definition as EndpointDefinition<string, Body, Body>, ...args);
     };
@@ -85,4 +96,26 @@ export default function createEndpointFactory<A extends any[], F>(
 
     return createEndpoint;
   };
+
+  defineEndpoint.many = <ReqMap extends Record<string, {}>>() => {
+    return <
+      T extends {
+        [P in Extract<keyof ReqMap, string>]: RequestHandlerDefinition<P, ReqMap[P], any>;
+      },
+    >(
+      definitions: T,
+    ) => {
+      const entries = Object.entries(definitions) as [string, RequestHandlerDefinition<string, any, any>][];
+      return entries.reduce<Record<string, CreateEndpoint<string, any, any, A, F>>>((acc, [path, handler]) => {
+        acc[path] = defineEndpoint(path, handler);
+        return acc;
+      }, {}) as {
+        [P in Extract<keyof ReqMap, string>]: T[P] extends RequestHandlerDefinition<P, ReqMap[P], infer Res>
+          ? CreateEndpoint<P, ReqMap[P], Res, A, F>
+          : never;
+      };
+    };
+  };
+
+  return defineEndpoint;
 }

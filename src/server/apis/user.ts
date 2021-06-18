@@ -8,11 +8,11 @@ export default user;
 interface Requests {
   '/profile': {};
 }
-const userApi = {
-  '/profile': defineExpressEndpoint('/profile', async (_p, _r: Requests['/profile']) => {
+const userApi = defineExpressEndpoint.many<Requests>()({
+  '/profile': async (_params, _req) => {
     return {};
-  }),
-};
+  },
+});
 
 userApi['/profile'](user, 'get');
 
