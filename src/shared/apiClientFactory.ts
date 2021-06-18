@@ -1,12 +1,11 @@
 import type { EndpointDefinition, PathParams } from './endpointFactory';
 import type ResponseResult from './responseResult';
 
-type RequestFuncOf<D extends EndpointDefinition<string, any, any>> = D extends EndpointDefinition<
-  any,
-  infer Req,
-  infer Res
->
-  ? (params: PathParams<D['path']>, reqBody: Req) => Promise<ResponseResult.Result<Res>>
+type RequestFuncOf<
+  D extends EndpointDefinition<string, any, any>,
+  P extends string = D['path'],
+> = D extends EndpointDefinition<any, infer Req, infer Res>
+  ? (params: PathParams<P>, reqBody: Req) => Promise<ResponseResult.Result<Res>>
   : never;
 
 export default function apiClientFactory(fetch: Window['fetch'], baseUrl: string) {
@@ -61,16 +60,19 @@ export default function apiClientFactory(fetch: Window['fetch'], baseUrl: string
   };
   type EndpointRecordBase = Partial<Record<string, { definition: EndpointDefinition<string, any, any> }>>;
   createApi.many = <D extends EndpointRecordBase>() => {
-    return <T extends Record<string, [path: NonNullable<D[keyof D]>['definition']['path'], method: 'GET' | 'POST']>>(
-      endpoints: T,
-    ) => {
+    type DefinitionMap = UnionToIntersection<
+      {
+        [K in Extract<keyof D, string>]: D[K] extends {} ? Record<K, D[K]['definition']> : {};
+      }[Extract<keyof D, string>]
+    >;
+    return <T extends Record<string, [path: keyof DefinitionMap, method: 'GET' | 'POST']>>(endpoints: T) => {
       const endpointEntries = Object.entries(endpoints) as [string, [path: string, method: 'GET' | 'POST']][];
       type AccType = Record<string, RequestFuncOf<EndpointDefinition<string, any, any>>>;
       return endpointEntries.reduce<AccType>((acc, [key, [path, method]]) => {
         acc[key] = createApi(path, method);
         return acc;
       }, {}) as {
-        [K in keyof T]: RequestFuncOf<NonNullable<D[T[K][0]]>['definition']>;
+        [K in keyof T]: RequestFuncOf<DefinitionMap[T[K][0]], Extract<T[K][0], string>>;
       };
     };
   };

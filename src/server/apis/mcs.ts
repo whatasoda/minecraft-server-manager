@@ -31,7 +31,7 @@ interface Requests {
   '/:instance/status': {};
 }
 
-const mcsApis = defineExpressEndpoint.many<Requests>()({
+const mcsServerApis = defineExpressEndpoint.many<Requests>()({
   '/list': async (_params, req, extra) => {
     const { pageToken } = req;
     const compute = extra.compute!;
@@ -70,12 +70,12 @@ const mcsApis = defineExpressEndpoint.many<Requests>()({
   },
 });
 
-mcsApis['/list'](mcs, 'get');
-mcsApis['/create'](mcs, 'post');
-mcsApis['/:instance/start'](mcs, 'post');
-mcsApis['/:instance/stop'](mcs, 'post');
-mcsApis['/:instance/delete'](mcs, 'post');
-mcsApis['/:instance/status'](mcs, 'get');
+mcsServerApis['/list'](mcs, 'get');
+mcsServerApis['/create'](mcs, 'post');
+mcsServerApis['/:instance/start'](mcs, 'post');
+mcsServerApis['/:instance/stop'](mcs, 'post');
+mcsServerApis['/:instance/delete'](mcs, 'post');
+mcsServerApis['/:instance/status'](mcs, 'get');
 
 const PROJECT_ID = '';
 const ZONE = 'asia-northeast1-a';
@@ -93,15 +93,15 @@ const proxyToInstance = (createPath: (target: string) => string) => {
 
 mcs.get(
   '/:instance/log/:target',
-  proxyToInstance((target) => `/api/log/${target}`),
+  proxyToInstance((target) => `/log/${target}`),
 );
 mcs.post(
   '/:instance/make-dispatch/:target',
-  proxyToInstance((target) => `/api/make-dispatch/${target}`),
+  proxyToInstance((target) => `/make-dispatch/${target}`),
 );
 mcs.get(
   '/:instance/make-stream/:target',
-  proxyToInstance((target) => `/api/make-stream/${target}`),
+  proxyToInstance((target) => `/make-stream/${target}`),
 );
 
-export type { mcsApis };
+export type { mcsServerApis };

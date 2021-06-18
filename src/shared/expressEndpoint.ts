@@ -1,12 +1,9 @@
-import Compute from '@google-cloud/compute';
 import express from 'express';
 import type { Request, Response } from 'express-serve-static-core';
 import createEndpointFactory, { ApiError } from './endpointFactory';
 import ResponseResult from './responseResult';
 
-type SupportedMethod = 'get' | 'post';
-const PROJECT_ID = 'whatasoda-mc-server';
-
+import type Compute from '@google-cloud/compute';
 declare global {
   namespace Endpoints {
     interface Extra {
@@ -14,6 +11,9 @@ declare global {
     }
   }
 }
+
+type SupportedMethod = 'get' | 'post';
+const PROJECT_ID = 'whatasoda-mc-server';
 
 const defineExpressEndpoint = createEndpointFactory((definition, app: express.Express, method: SupportedMethod) => {
   const { path, handler } = definition;
@@ -33,9 +33,17 @@ const defineExpressEndpoint = createEndpointFactory((definition, app: express.Ex
   }
 });
 
-const createExtra = (req: Request): Endpoints.Extra => ({
-  compute: req.authClient ? new Compute({ projectId: PROJECT_ID, authClient: req.authClient }) : undefined,
-});
+const createExtra = (req: Request): Endpoints.Extra => {
+  if (req.authClient) {
+    // We don't have '@google-cloud/compute' on mcs.
+    const Compute = (require('@google-cloud/compute') as typeof import('@google-cloud/compute')).default;
+    return {
+      compute: new Compute({ projectId: PROJECT_ID, authClient: req.authClient }),
+    };
+  } else {
+    return {};
+  }
+};
 
 export const sendResponse = (res: Response, dataOrError: any) => {
   if (dataOrError instanceof ApiError) {
