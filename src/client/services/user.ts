@@ -17,7 +17,6 @@ const userService = {
         throw new Error('Not Logged In');
       }
     } catch (e) {
-      alert('');
       return null;
     }
   },
