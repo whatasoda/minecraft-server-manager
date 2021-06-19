@@ -81,7 +81,7 @@ export default function apiClientFactory(fetch: Window['fetch'], baseUrl: string
 }
 
 const buildPathWithParam = (path: string, params: PathParams<string>) => {
-  return path.replace(/(?<=\/):([a-zA-Z0-9_-])(?=\/|$)/g, (_, key) => {
+  return path.replace(/(?<=\/):([a-zA-Z0-9_-]+)(?=\/|$)/g, (_, key) => {
     const param = params[key];
     if (param) {
       return param;

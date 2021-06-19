@@ -120,6 +120,7 @@ const createInstanceConfig = async (
     ],
     metadata: {
       items: [
+        { key: 'javaMemorySize', value: javaMemorySizeGb },
         { key: 'startup-script', value: await createStartupScript(vmName, javaMemorySizeGb) },
         { key: 'shutdown-script', value: await createShutdownScript() },
       ],

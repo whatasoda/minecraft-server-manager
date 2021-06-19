@@ -36,7 +36,7 @@ const defineExpressEndpoint = createEndpointFactory((definition, app: express.Ex
 const createExtra = (req: Request): Endpoints.Extra => {
   if (req.authClient) {
     // We don't have '@google-cloud/compute' on mcs.
-    const Compute = (require('@google-cloud/compute') as typeof import('@google-cloud/compute')).default;
+    const Compute = require('@google-cloud/compute') as typeof import('@google-cloud/compute')['default'];
     return {
       compute: new Compute({ projectId: PROJECT_ID, authClient: req.authClient }),
     };
