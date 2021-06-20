@@ -1,10 +1,9 @@
+import { Button, Card } from '@blueprintjs/core';
 import { Popover2 } from '@blueprintjs/popover2';
 import React from 'react';
 import styled from 'styled-components';
 import CreateServer from '../CreateServer';
 import ServerSummary from '../ServerSummary';
-import { Button } from '../_fragments/blueprint/buttons';
-import Card from '../_fragments/blueprint/Card';
 import { ServerListUIProps } from './container';
 
 export default function ServerListUI({ servers, refresh }: ServerListUIProps) {
@@ -31,7 +30,7 @@ export default function ServerListUI({ servers, refresh }: ServerListUIProps) {
 
   function renderServers() {
     return servers.map((server, idx) => {
-      return <ServerSummary key={server.name || idx} server={server} />;
+      return <ServerSummary key={server.name || idx} instance={server} />;
     });
   }
 }
