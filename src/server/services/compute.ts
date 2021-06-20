@@ -1,9 +1,7 @@
 import Compute, { Operation, VM } from '@google-cloud/compute';
 import path from 'path';
 import fs from 'fs-extra';
-
-const ZONE = 'asia-northeast1-a';
-const bucketName = '';
+import { BUCKET_NAME, METADATA } from '../constants';
 
 type InstanceInfo = Minecraft.MachineInfo;
 type InstanceConfig = Omit<Minecraft.MachineConfig, 'name'>;
@@ -40,21 +38,21 @@ export const listInstances = async (
   instances: InstanceInfo[];
   nextQuery: string | undefined;
 }> => {
-  const zone = compute.zone(ZONE);
+  const zone = compute.zone(METADATA.zone());
   const [vms, nextQuery] = await zone.getVMs({ pageToken });
   const instances = vms.map((vm) => extractInstanceInfo(vm));
   return { instances, nextQuery };
 };
 
 export const getInstanceInfo = async (compute: Compute, vmName: string): Promise<InstanceInfo> => {
-  const zone = compute.zone(ZONE);
+  const zone = compute.zone(METADATA.zone());
   const vm = zone.vm(vmName);
   const [res] = await vm.get();
   return extractInstanceInfo(res);
 };
 
 export const startInstance = async (compute: Compute, vmName: string): Promise<{ message: string }> => {
-  const zone = compute.zone(ZONE);
+  const zone = compute.zone(METADATA.zone());
   const vm = zone.vm(vmName);
   const [operation] = await vm.start();
   await operation.promise();
@@ -62,7 +60,7 @@ export const startInstance = async (compute: Compute, vmName: string): Promise<{
 };
 
 export const stopInstance = async (compute: Compute, vmName: string): Promise<{ message: string }> => {
-  const zone = compute.zone(ZONE);
+  const zone = compute.zone(METADATA.zone());
   const vm = zone.vm(vmName);
   const [operation] = await vm.stop();
   await operation.promise();
@@ -74,7 +72,7 @@ export const createInstance = async (
   vmName: string,
   config: InstanceConfig,
 ): Promise<{ message: string }> => {
-  const zone = compute.zone(ZONE);
+  const zone = compute.zone(METADATA.zone());
   const vm = zone.vm(vmName);
   const [, operation] = (await vm.create(await createInstanceConfig(vmName, config))) as [VM, Operation];
   await operation.promise();
@@ -82,7 +80,7 @@ export const createInstance = async (
 };
 
 export const deleteInstance = async (compute: Compute, vmName: string): Promise<{ message: string }> => {
-  const zone = compute.zone(ZONE);
+  const zone = compute.zone(METADATA.zone());
   const vm = zone.vm(vmName);
   const [operation] = (await vm.delete()) as unknown as [Operation, {}];
   await operation.promise();
@@ -94,10 +92,11 @@ const createInstanceConfig = async (
   vmName: string,
   { machineType = 'n2-standard-4', diskSizeGb = 100, javaMemorySizeGb = 10 }: InstanceConfig,
 ) => {
+  const zone = METADATA.zone();
   diskSizeGb = Math.floor(Math.max(10, diskSizeGb));
   javaMemorySizeGb = Math.floor(Math.max(2, javaMemorySizeGb));
   return {
-    machineType: `zones/${ZONE}/machineTypes/${machineType}`,
+    machineType: `zones/${zone}/machineTypes/${machineType}`,
     tags: { items: ['minecraft-server'] },
     networkInterfaces: [
       {
@@ -113,7 +112,7 @@ const createInstanceConfig = async (
         initializeParams: {
           sourceImage: 'projects/ubuntu-os-cloud/global/images/family/ubuntu-1804-lts',
           diskSizeGb: `${diskSizeGb}`,
-          diskType: `zones/${ZONE}/diskTypes/pd-ssd`,
+          diskType: `zones/${zone}/diskTypes/pd-ssd`,
         },
         autoDelete: true,
       },
@@ -152,7 +151,7 @@ export const createStartupScript = async (vmName: string, javaMemorySize: number
 
   javaMemorySize = Math.floor(javaMemorySize);
   const variables = {
-    BUCKET_NAME: bucketName,
+    BUCKET_NAME: BUCKET_NAME,
     JAVA_MEM_SIZE: isNaN(javaMemorySize) ? null : javaMemorySize,
     SERVER_NAME: vmName,
   };

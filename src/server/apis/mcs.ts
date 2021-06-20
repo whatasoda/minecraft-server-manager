@@ -11,6 +11,7 @@ import {
   stopInstance,
 } from '../services/compute';
 import defineExpressEndpoint from '../../shared/expressEndpoint';
+import { METADATA, PROJECT_ID } from '../constants';
 
 const mcs = express().use(withAuth());
 export default mcs;
@@ -77,14 +78,11 @@ mcsServerApis['/:instance/stop'](mcs, 'post');
 mcsServerApis['/:instance/delete'](mcs, 'post');
 mcsServerApis['/:instance/status'](mcs, 'get');
 
-const PROJECT_ID = '';
-const ZONE = 'asia-northeast1-a';
-
 const proxyToInstance = (createPath: (target: string) => string) => {
   return (req: Request, res: Response) => {
     const { instance, target } = req.params;
     request({
-      host: `${instance}.${ZONE}.c.${PROJECT_ID}.internal`,
+      host: `${instance}.${METADATA.zone()}.c.${PROJECT_ID}.internal`,
       port: 8000,
       path: createPath(target),
     }).pipe(res);
