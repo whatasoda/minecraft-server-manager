@@ -5,9 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "ts-node-transpile-only scripts/dev/concurrent.ts",
-    "dev:d-client": "webpack serve --config scripts/webpack/config.dev.js",
-    "dev:d-server": "nodemon"
+    "dev": "ts-node-transpile-only scripts/dev.ts",
+    "dev:client": "webpack serve --config scripts/webpack/config.dev.js",
+    "dev:server": "nodemon",
+    "build": "sh scripts/build.sh",
+    "build:client": "webpack --config scripts/webpack/config.prod.js"
   },
   "repository": {
     "type": "git",
@@ -20,7 +22,9 @@
   },
   "homepage": "https://github.com/whatasoda/minecraft-server-manager#readme",
   "server": {
-    "scripts": {},
+    "scripts": {
+      "start": "ts-node-transpile-only src/server"
+    },
     "dependencies": {
       "@google-cloud/common": true,
       "@google-cloud/compute": true,
@@ -29,7 +33,9 @@
       "express-session": true,
       "fs-extra": true,
       "google-auth-library": true,
-      "node-fetch": true
+      "node-fetch": true,
+      "ts-node": true,
+      "typescript": true
     }
   },
   "mcs": {
@@ -74,7 +80,6 @@
     "@types/styled-components": "5.1.9",
     "@types/webpack-dev-server": "3.11.4",
     "@whatasoda/eslint-config": "3.14.0",
-    "@whatasoda/tsconfig": "1.0.3",
     "clean-webpack-plugin": "4.0.0-alpha.0",
     "concurrently": "6.2.0",
     "css-loader": "5.2.6",
@@ -85,6 +90,7 @@
     "sass-loader": "11.1.1",
     "session-file-store": "1.5.0",
     "style-loader": "2.0.0",
+    "terser-webpack-plugin": "5.1.3",
     "ts-loader": "9.2.2",
     "web-streams-polyfill": "3.0.3",
     "webpack": "5.38.1",

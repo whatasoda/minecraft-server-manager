@@ -12,7 +12,7 @@ module.exports = {
     publicPath: '/',
   },
   devServer: {
-    port: 8001,
+    port: 8081,
     injectHot: false,
     writeToDisk: true,
   },

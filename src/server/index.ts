@@ -5,7 +5,7 @@ import api from './apis';
 import { waitForMetadataObtainations } from './constants';
 
 const isProd = process.env.NODE_ENV === 'production';
-const publicRoot = isProd ? path.resolve(__dirname, 'public') : path.resolve(__dirname, '../../dist/public');
+const publicRoot = isProd ? path.resolve(__dirname, '../../public') : path.resolve(__dirname, '../../dist/public');
 
 const app = express();
 
@@ -40,8 +40,8 @@ app.get('*', (_, res) => {
 });
 
 waitForMetadataObtainations().then(() => {
-  app.listen(8000, 'localhost', () => {
+  app.listen(8080, 'localhost', () => {
     // eslint-disable-next-line no-console
-    console.log('Server started on port 8000');
+    console.log('Server started on port 8080');
   });
 });
