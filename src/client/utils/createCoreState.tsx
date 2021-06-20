@@ -1,15 +1,15 @@
 import React, { createContext, useContext } from 'react';
 
-export default function createCoreState<T>(coreStateHook: () => T) {
+export default function createCoreState<P extends {}, T extends {}>(coreStateHook: (props: P) => T) {
   const context = createContext<T>(null as any);
 
-  const CoreStateProvider: React.FC = ({ children }) => {
-    return <context.Provider value={coreStateHook()} children={children} />;
+  const CoreStateProvider: React.FC<P> = ({ children, ...props }) => {
+    return <context.Provider value={coreStateHook(props as P)} children={children} />;
   };
 
-  const createCoreStateHOC = <P extends {}>(Component: React.ComponentType<P>) => {
-    return function CoreStateHOC(props: P) {
-      return <CoreStateProvider children={<Component {...props} />} />;
+  const createCoreStateHOC = <Q extends {}>(Component: React.ComponentType<Q>) => {
+    return function CoreStateHOC(props: Q & P) {
+      return <CoreStateProvider {...props} children={<Component {...props} />} />;
     };
   };
 
