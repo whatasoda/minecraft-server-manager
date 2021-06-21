@@ -23,14 +23,19 @@ function createMetadataGetter(path: string, fallback: string, transform: (raw: s
     headers: {
       'Metadata-Flavor': 'Google',
     },
-  }).then(async (res) => {
-    if (res.status === 200) {
-      const raw = await res.text();
-      cache = transform(raw);
-    } else {
+  }).then(
+    async (res) => {
+      if (res.status === 200) {
+        const raw = await res.text();
+        cache = transform(raw);
+      } else {
+        cache = fallback;
+      }
+    },
+    () => {
       cache = fallback;
-    }
-  });
+    },
+  );
   metadataObtainations.push(promise);
 
   return () => cache;
