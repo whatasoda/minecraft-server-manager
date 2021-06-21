@@ -1,7 +1,7 @@
 import Compute, { Operation, VM } from '@google-cloud/compute';
 import path from 'path';
 import fs from 'fs-extra';
-import { BUCKET_NAME, METADATA } from '../constants';
+import { BUCKET_NAME, METADATA, PROJECT_ID } from '../constants';
 
 type InstanceInfo = Minecraft.MachineInfo;
 type InstanceConfig = Omit<Minecraft.MachineConfig, 'name'>;
@@ -125,18 +125,12 @@ const createInstanceConfig = async (
         { key: 'shutdown-script', value: await createShutdownScript() },
       ],
     },
-    // "serviceAccounts": [
-    //   {
-    //     "email": string,
-    //     "scopes": [
-    //       string
-    //     ]
-    //   }
-    // ],
-    // "labels": {
-    //   string: string,
-    //   ...
-    // },
+    serviceAccounts: [
+      {
+        email: `mcs-compute@${PROJECT_ID}.iam.gserviceaccount.com`,
+        scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+      },
+    ],
     deletionProtection: false,
   };
 };
