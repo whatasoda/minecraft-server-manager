@@ -1,6 +1,7 @@
+SHELL=/bin/bash
 # supposed to be placed at default workdir of startup-script
 
-SERVER_NAME=server# compute engine instance name
+SERVER_NAME=# compute engine instance name
 BUCKET_NAME=# bucket name to use for data of server
 JAVA_MEM_SIZE=2# memory size of java process
 GIT_TAG=main
@@ -35,7 +36,7 @@ endef
 startup:
 	@# NOTE: `sudo apt update` will be executed by startup script
 	@curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash -
-	@sudo apt-get install -y openjdk-8-jdk-headless zip screen jq nodejs
+	@sudo apt-get install -y openjdk-16-jdk-headless zip screen jq nodejs
 	@sudo apt-get clean
 	@$(MAKE) download-repo
 	@$(MAKE) load-minecraft-data
@@ -75,9 +76,10 @@ load-minecraft-data:
 	@echo 'Successfully loaded minecraft server data!'
 
 sc.minecraft:
-	@cd ./$(MINECRAFT)
-	@echo 'eula=true' > eula.text
-	@java -Xmx$(JAVA_MEM_SIZE)G -Xms$(JAVA_MEM_SIZE)G -jar server.jar nogui
+	@ \
+		cd ./$(MINECRAFT) && \
+		echo "#$(shell date '+%c (UTC%z)')\neula=true" > eula.txt; \
+		java -Xmx$(JAVA_MEM_SIZE)G -Xms$(JAVA_MEM_SIZE)G -jar server.jar nogui
 
 start-minecraft:
 	@echo 'Starting minecraft server...'

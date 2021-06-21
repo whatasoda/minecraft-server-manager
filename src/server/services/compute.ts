@@ -74,7 +74,8 @@ export const createInstance = async (
 ): Promise<{ message: string }> => {
   const zone = compute.zone(METADATA.zone());
   const vm = zone.vm(vmName);
-  const [, operation] = (await vm.create(await createInstanceConfig(vmName, config))) as [VM, Operation];
+  const instanceConfig = await createInstanceConfig(vmName, config);
+  const [, operation] = (await vm.create(instanceConfig)) as [VM, Operation];
   await operation.promise();
   return { message: 'success' };
 };
@@ -110,7 +111,7 @@ const createInstanceConfig = async (
         mode: 'READ_WRITE',
         boot: true,
         initializeParams: {
-          sourceImage: 'projects/ubuntu-os-cloud/global/images/family/ubuntu-1804-lts',
+          sourceImage: 'projects/ubuntu-os-cloud/global/images/family/ubuntu-2004-lts',
           diskSizeGb: `${diskSizeGb}`,
           diskType: `zones/${zone}/diskTypes/pd-ssd`,
         },
@@ -159,13 +160,13 @@ export const createStartupScript = async (vmName: string, javaMemorySize: number
     '####_VARIABLE_DEFINITION_####',
     Object.entries(variables).reduce((acc, [key, value]) => {
       if (value !== null) {
-        acc += `${key}=${value}`;
+        acc += `${key}=${value}\n`;
       }
       return acc;
     }, ''),
   );
 
-  const startup = startupTemplate.replace('####_MAKEFILE_####', makefile);
+  const startup = startupTemplate.replace('####_MAKEFILE_####', makefile.replace(/\$/g, '$$$$'));
 
   return startup;
 };

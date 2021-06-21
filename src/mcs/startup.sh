@@ -1,5 +1,7 @@
 #! /bin/bash
 
+cd ~
+
 cat <<'EOF' > Makefile
 ####_MAKEFILE_####
 EOF
