@@ -15,14 +15,10 @@ else
   echo 'Service Account already exists, creation skipped.'
 fi
 
+# https://cloud.google.com/storage/docs/access-control/iam-roles
 gcloud projects add-iam-policy-binding $GOOGLE_CLOUD_PROJECT \
   --member="serviceAccount:$SA_EMAIL" \
-  --role=roles/storage.objectCreator \
-  --no-user-output-enabled
-
-gcloud projects add-iam-policy-binding $GOOGLE_CLOUD_PROJECT \
-  --member="serviceAccount:$SA_EMAIL" \
-  --role=roles/storage.objectViewer \
+  --role=roles/storage.objectAdmin \
   --no-user-output-enabled
 
 echo "$SA_EMAIL has following roles"

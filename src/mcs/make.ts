@@ -20,11 +20,11 @@ const make = (availableTargets: string[], ...[target, params = {}]: MakeArgs): C
 };
 
 const dispatchTargets = [
-  'load-minecraft-data',
   'start-minecraft',
   'kill-minecraft',
   'exec-command-minecraft',
   'save-minecraft-data',
+  'load-minecraft-data',
   'stop-minecraft',
 ];
 export const makeDispatch = async (...args: MakeArgs) => {

@@ -18,9 +18,11 @@ endef
 define screen-start
 	$(call screen-exist,$(1)) \
 	if [ "$$result" == "0" ]; then \
-		echo "Screen 'make-$(1)' already exists."; exit 1; \
+		echo "Screen 'make-$(1)' already exists."; \
+		result=1; \
 	else \
 		screen -p 0 -L -Logfile make-$(1).log -dmS make-$(1) $(MAKE) sc.$(1); \
+		result=0; \
 	fi
 endef
 
@@ -28,8 +30,10 @@ define screen-execute
 	$(call screen-exist,$(1)) \
 	if [ "$$result" == "0" ]; then \
 		echo '$(2)' | xargs screen -p 0 -S make-$(1) -X; \
+		result=0; \
 	else \
-		echo "No screen 'make-$(1)' found."; exit 1; \
+		echo "No screen 'make-$(1)' found."; \
+		result=1; \
 	fi
 endef
 
@@ -38,47 +42,44 @@ startup:
 	@curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash -
 	@sudo apt-get install -y openjdk-16-jdk-headless zip screen jq nodejs
 	@sudo apt-get clean
-	@$(MAKE) download-repo
-	@$(MAKE) load-minecraft-data
-	@$(MAKE) start-minecraft
-	@$(MAKE) start-agent
+	@$(MAKE) download-repo-data || true
+	@$(MAKE) download-server-jar || true
+	@$(MAKE) start-minecraft || true
+	@$(MAKE) start-agent || true
 
 shutdown:
-	@$(MAKE) stop-minecraft
-	@$(MAKE) kill-agent
+	@$(MAKE) stop-minecraft || true
+	@$(MAKE) kill-agent || true
 
-download-repo:
-	@echo "Downloading repo..."
-	@rm -rf ./repo
-	@curl -fsSL https://github.com/whatasoda/minecraft-server-manager/archive/refs/heads/$(GIT_TAG).zip > /tmp/repo.zip
-	@unzip /tmp/repo.zip -d /tmp/repo
-	@mv /tmp/repo/* ./repo
-	@rm /tmp/repo.zip
-	@echo "Successfully downloaded repo!"
-
-load-minecraft-data:
-	@echo 'Loading minecraft server data...'
-	@rm -rf ./$(MINECRAFT)
+download-repo-data:
 	@ \
-		result=0; gsutil -q stat $(GCS_BASE)/$(MINECRAFT)/server.jar || result=$$?; \
-		if [ "$$result" == "0" ]; then \
-			echo 'Loading from GCS'; \
-			gsutil cp -r $(GCS_BASE)/$(MINECRAFT) .; \
-		else \
-			echo 'No data found in GCS, Downloading latest server.jar'; \
+		if [ ! -e ./repo/package.json ]; then \
+			printf 'No repo data found, downloading...'; \
+			curl -fsSL https://github.com/whatasoda/minecraft-server-manager/archive/refs/heads/$(GIT_TAG).zip > /tmp/repo.zip; \
+			unzip /tmp/repo.zip -d /tmp/repo; \
+			mv /tmp/repo/* ./repo; \
+			rm /tmp/repo.zip; \
+			printf 'done\n'; \
+		fi
+
+download-server-jar:
+	@ \
+		if [ ! -e ./$(MINECRAFT)/server.jar ]; then \
+			printf 'No server.jar found, downloading...'; \
 			mkdir ./$(MINECRAFT); \
 			curl -fsSL https://launchermeta.mojang.com/mc/game/version_manifest.json | \
 			jq '.versions[0].url' | \
 			xargs curl -fsSL | \
 			jq '.downloads.server.url' | \
 			xargs curl -fsSL > ./$(MINECRAFT)/server.jar; \
+			printf 'done\n'; \
 		fi
-	@echo 'Successfully loaded minecraft server data!'
 
 sc.minecraft:
 	@ \
 		cd ./$(MINECRAFT) && \
-		echo "#$(shell date '+%c (UTC%z)')\neula=true" > eula.txt; \
+		echo "#$(shell date '+%c (UTC%z)')" > eula.txt; \
+		echo "eula=true" >> eula.txt; \
 		java -Xmx$(JAVA_MEM_SIZE)G -Xms$(JAVA_MEM_SIZE)G -jar server.jar nogui
 
 start-minecraft:
@@ -98,22 +99,33 @@ log-minecraft:
 exec-command-minecraft:
 	@$(call screen-execute,minecraft,stuff "$(command)^M")
 
+load-minecraft-data:
+	@echo 'Loading minecraft server data...'
+	@ \
+		result=0; gsutil -q stat $(GCS_BASE)/$(MINECRAFT)/server.jar || result=$$?; \
+		if [ "$$result" == "0" ]; then \
+			echo 'Loading from GCS'; \
+			rm -rf ./$(MINECRAFT); \
+			gsutil cp -r "$(GCS_BASE)/$(MINECRAFT)" .; \
+		fi
+	@echo 'Successfully loaded minecraft server data!'
+
 save-minecraft-data:
 	@echo 'Saving minecraft server data...'
 	@cp -r ./$(MINECRAFT) /tmp/$(MINECRAFT)
 	@rm /tmp/$(MINECRAFT)/server.jar
+	@rm /tmp/$(MINECRAFT)/*.log.gz
 	@zip -r /tmp/$(MINECRAFT).zip /tmp/$(MINECRAFT)
-	@gsutil cp /tmp/$(MINECRAFT).zip $(GCS_BASE)/$(MINECRAFT)-$(shell TZ=UTC-9 date '+%Y-%m-%d-%H-%M-%S').zip
+	@gsutil cp /tmp/$(MINECRAFT).zip "$(GCS_BASE)/$(MINECRAFT)-$(shell TZ=UTC-9 date '+%Y-%m-%d-%H-%M-%S').zip"
 	@rm -rf /tmp/$(MINECRAFT) /tmp/$(MINECRAFT).zip
 	@echo 'Successfully saved minecraft server data!'
 
 stop-minecraft:
-	@$(MAKE) save-minecraft-data
 	@echo 'Stopping minecraft server...'
 	@$(call screen-execute,minecraft,stuff "/stop^M")
-	@$(call screen-execute,minecraft,kill) || true
-	@gsutil rm $(GCS_BASE)/$(MINECRAFT)/**
-	@gsutil cp -r ./$(MINECRAFT)/** $(GCS_BASE)/$(MINECRAFT)
+	@$(call screen-execute,minecraft,kill)
+	@gsutil -m rm "$(GCS_BASE)/$(MINECRAFT)/**" || true
+	@gsutil -m cp -r "./$(MINECRAFT)/*" "$(GCS_BASE)/$(MINECRAFT)"
 	@echo 'Successfully stopped minecraft server!'
 
 sc.agent:
@@ -134,3 +146,7 @@ kill-agent:
 
 log-agent:
 	@tail -Fn 10 make-agent.log
+
+clear-log:
+	@rm ./make-*.log
+	@rm ./$(MINECRAFT)/*.log.gz
