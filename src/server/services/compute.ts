@@ -38,21 +38,21 @@ export const listInstances = async (
   instances: InstanceInfo[];
   nextQuery: string | undefined;
 }> => {
-  const zone = compute.zone(METADATA.zone());
+  const zone = compute.zone(METADATA.zone);
   const [vms, nextQuery] = await zone.getVMs({ pageToken });
   const instances = vms.map((vm) => extractInstanceInfo(vm));
   return { instances, nextQuery };
 };
 
 export const getInstanceInfo = async (compute: Compute, vmName: string): Promise<InstanceInfo> => {
-  const zone = compute.zone(METADATA.zone());
+  const zone = compute.zone(METADATA.zone);
   const vm = zone.vm(vmName);
   const [res] = await vm.get();
   return extractInstanceInfo(res);
 };
 
 export const startInstance = async (compute: Compute, vmName: string): Promise<{ message: string }> => {
-  const zone = compute.zone(METADATA.zone());
+  const zone = compute.zone(METADATA.zone);
   const vm = zone.vm(vmName);
   const [operation] = await vm.start();
   await operation.promise();
@@ -60,7 +60,7 @@ export const startInstance = async (compute: Compute, vmName: string): Promise<{
 };
 
 export const stopInstance = async (compute: Compute, vmName: string): Promise<{ message: string }> => {
-  const zone = compute.zone(METADATA.zone());
+  const zone = compute.zone(METADATA.zone);
   const vm = zone.vm(vmName);
   const [operation] = await vm.stop();
   await operation.promise();
@@ -72,7 +72,7 @@ export const createInstance = async (
   vmName: string,
   config: InstanceConfig,
 ): Promise<{ message: string }> => {
-  const zone = compute.zone(METADATA.zone());
+  const zone = compute.zone(METADATA.zone);
   const vm = zone.vm(vmName);
   const instanceConfig = await createInstanceConfig(vmName, config);
   const [, operation] = (await vm.create(instanceConfig)) as [VM, Operation];
@@ -81,7 +81,7 @@ export const createInstance = async (
 };
 
 export const deleteInstance = async (compute: Compute, vmName: string): Promise<{ message: string }> => {
-  const zone = compute.zone(METADATA.zone());
+  const zone = compute.zone(METADATA.zone);
   const vm = zone.vm(vmName);
   const [operation] = (await vm.delete()) as unknown as [Operation, {}];
   await operation.promise();
@@ -93,7 +93,7 @@ const createInstanceConfig = async (
   vmName: string,
   { machineType = 'n2-standard-4', diskSizeGb = 100, javaMemorySizeGb = 10 }: InstanceConfig,
 ) => {
-  const zone = METADATA.zone();
+  const zone = METADATA.zone;
   diskSizeGb = Math.floor(Math.max(10, diskSizeGb));
   javaMemorySizeGb = Math.floor(Math.max(2, javaMemorySizeGb));
   return {

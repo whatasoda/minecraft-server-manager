@@ -82,7 +82,7 @@ const proxyToInstance = (createPath: (target: string) => string) => {
   return (req: Request, res: Response) => {
     const { instance, target } = req.params;
     request({
-      host: `${instance}.${METADATA.zone()}.c.${PROJECT_ID}.internal`,
+      host: `${instance}.${METADATA.zone}.c.${PROJECT_ID}.internal`,
       port: 8000,
       path: createPath(target),
     }).pipe(res);
