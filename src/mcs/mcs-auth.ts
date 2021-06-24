@@ -15,17 +15,17 @@ const { metadata, waitForMetadataLoad } = CloudMetadata({
   },
 });
 
-export default async function withDevAuth(): Promise<RequestHandler | null> {
+export default async function withMcsAuth(): Promise<RequestHandler> {
   await new Promise<void>((resolve) => {
     waitForMetadataLoad(resolve);
   });
 
   const { tokenSecret, hostname } = metadata;
   if (!tokenSecret || !hostname) {
-    return null;
+    throw new Error('No secret found');
   }
 
-  return function DevAuthMiddleware(req, res, next) {
+  return function McsAuthMiddleware(req, res, next) {
     const { ['X-MCS-TOKEN']: receivedToken } = req.headers;
     const computedToken = evaluateToken(hostname, tokenSecret);
 

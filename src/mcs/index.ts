@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import express from 'express';
 import defineExpressEndpoint from '../shared/expressEndpoint';
-import withDevAuth from './dev-auth';
+import withMcsAuth from './mcs-auth';
 import { logFile, makeDispatch, makeStream } from './make';
 
 // align path with `server`'s format
@@ -19,12 +19,9 @@ const mcsInstanceApis = defineExpressEndpoint.many<Requests>()({
 const createServer = async () => {
   const app = express();
 
-  const devAuth = await withDevAuth();
-  if (devAuth) {
-    app.use(devAuth);
-  }
-
+  app.use(await withMcsAuth());
   app.use(express.json());
+
   mcsInstanceApis['/make-dispatch/:target'](app, 'post');
 
   app.get('/log/:target', (req, res) => {
