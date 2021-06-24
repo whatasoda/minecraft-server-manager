@@ -11,7 +11,8 @@ import {
   stopInstance,
 } from '../services/compute';
 import defineExpressEndpoint from '../../shared/expressEndpoint';
-import { METADATA, PROJECT_ID } from '../constants';
+import { MCS_TOKEN_SECRET, METADATA, PROJECT_ID } from '../constants';
+import evaluateToken from '../../shared/evaluateToken';
 
 const mcs = express().use(withAuth());
 export default mcs;
@@ -79,12 +80,27 @@ mcsServerApis['/:instance/delete'](mcs, 'post');
 mcsServerApis['/:instance/status'](mcs, 'get');
 
 const proxyToInstance = (createPath: (target: string) => string) => {
-  return (req: Request, res: Response) => {
+  return async (req: Request, res: Response) => {
     const { instance, target } = req.params;
+    const hostname = `${instance}.${METADATA.zone}.c.${PROJECT_ID}.internal`;
+    const token = evaluateToken(hostname, MCS_TOKEN_SECRET);
+
+    let host = hostname;
+    if (process.env.NODE_ENV !== 'production') {
+      const extra = global.createRequestExtra?.(req) || {};
+      const { globalIP } = await getInstanceInfo(extra.compute!, instance!);
+      if (globalIP) {
+        host = globalIP;
+      }
+    }
+
     request({
-      host: `${instance}.${METADATA.zone}.c.${PROJECT_ID}.internal`,
+      host,
       port: 8000,
       path: createPath(target),
+      headers: {
+        'X-MCS-TOKEN': token,
+      },
     }).pipe(res);
   };
 };

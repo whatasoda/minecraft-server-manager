@@ -1,12 +1,8 @@
 import child_process, { ChildProcess } from 'child_process';
-import path from 'path';
 import type * as stream from 'stream';
+import workdir from '../shared/workdir';
 
 type MakeArgs = [target: string, params?: Record<string, string>];
-
-const workdir = (...fragments: string[]) => {
-  return path.resolve(process.env.INIT_CWD || process.cwd(), ...fragments);
-};
 
 const make = (availableTargets: string[], ...[target, params = {}]: MakeArgs): ChildProcess => {
   if (availableTargets.includes(target)) {
@@ -64,6 +60,6 @@ const connectProcessToStream = (cp: ChildProcess, dist: stream.Writable) => {
   });
 };
 
-export const makeLogPath = (target: string) => {
+export const logFile = (target: string) => {
   return workdir(`make-${target}.log`);
 };

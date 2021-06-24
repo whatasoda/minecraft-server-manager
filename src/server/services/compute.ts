@@ -1,7 +1,7 @@
 import Compute, { Operation, VM } from '@google-cloud/compute';
-import path from 'path';
 import fs from 'fs-extra';
-import { BUCKET_NAME, METADATA, PROJECT_ID } from '../constants';
+import { BUCKET_NAME, MCS_TOKEN_SECRET, METADATA, PROJECT_ID } from '../constants';
+import { mcsdir } from '../../shared/workdir';
 
 type InstanceInfo = Minecraft.MachineInfo;
 type InstanceConfig = Omit<Minecraft.MachineConfig, 'name'>;
@@ -98,7 +98,11 @@ const createInstanceConfig = async (
   javaMemorySizeGb = Math.floor(Math.max(2, javaMemorySizeGb));
   return {
     machineType: `zones/${zone}/machineTypes/${machineType}`,
-    tags: { items: ['minecraft-server'] },
+    tags: {
+      items: ['minecraft-server', process.env.NODE_ENV !== 'production' ? 'minecraft-server-dev' : null].filter(
+        Boolean,
+      ),
+    },
     networkInterfaces: [
       {
         network: 'global/networks/default',
@@ -123,6 +127,7 @@ const createInstanceConfig = async (
         { key: 'javaMemorySize', value: javaMemorySizeGb },
         { key: 'startup-script', value: await createStartupScript(vmName, javaMemorySizeGb) },
         { key: 'shutdown-script', value: await createShutdownScript() },
+        { key: 'mcs-token-secret', value: MCS_TOKEN_SECRET },
       ],
     },
     serviceAccounts: [
@@ -135,13 +140,10 @@ const createInstanceConfig = async (
   };
 };
 
-const mcsDir = (...fragments: string[]) => {
-  return path.resolve(__dirname, '../../mcs', ...fragments);
-};
 export const createStartupScript = async (vmName: string, javaMemorySize: number) => {
   const [makefileTemplate, startupTemplate] = await Promise.all([
-    fs.readFile(mcsDir('Makefile'), 'utf-8'),
-    fs.readFile(mcsDir('startup.sh'), 'utf-8'),
+    fs.readFile(mcsdir('Makefile'), 'utf-8'),
+    fs.readFile(mcsdir('startup.sh'), 'utf-8'),
   ]);
 
   javaMemorySize = Math.floor(javaMemorySize);
@@ -166,5 +168,5 @@ export const createStartupScript = async (vmName: string, javaMemorySize: number
 };
 
 const createShutdownScript = async () => {
-  return await fs.readFile(mcsDir('Makefile'), 'utf-8');
+  return await fs.readFile(mcsdir('Makefile'), 'utf-8');
 };

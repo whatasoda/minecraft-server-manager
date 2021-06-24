@@ -1,4 +1,5 @@
 import CloudMetadata from '../shared/cloud-metadata';
+import workdir from '../shared/workdir';
 
 // https://cloud.google.com/appengine/docs/standard/nodejs/runtime?hl=en#environment_variables
 export const PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT || 'whatasoda-mc-server';
@@ -11,3 +12,5 @@ export const { metadata: METADATA, waitForMetadataLoad } = CloudMetadata({
     transform: (raw) => raw.split('/').pop()!,
   },
 });
+
+export const { secret: MCS_TOKEN_SECRET } = require(workdir('.mcs-token-secret.json')) as { secret: string };

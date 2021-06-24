@@ -34,7 +34,7 @@ export default function CloudMetadata<T extends MetadataRequestRecord>(requests:
   });
 
   return {
-    metadata: metadata as Readonly<Record<keyof T, string>>,
+    metadata: metadata as { readonly [K in keyof T]: string },
     waitForMetadataLoad: (callback: () => void) => {
       const fn = () => callback();
       Promise.all(promises).then(fn, fn);
