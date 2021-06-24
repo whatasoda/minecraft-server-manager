@@ -1,10 +1,11 @@
 import { Credentials, OAuth2Client } from 'google-auth-library';
+import workdir from '../../shared/workdir';
 
 const scopes: string[] = ['https://www.googleapis.com/auth/compute'];
 
 const getKeys = () => {
-  const keys = require('../oauth2.keys.json');
-  return [keys.web.client_id, keys.web.client_secret, keys.web.redirect_uris[1]] as const;
+  const keys = require(workdir('.oauth2.keys.json'));
+  return [keys.web.client_id, keys.web.client_secret, keys.web.redirect_uris[1]] as [string, string, string];
 };
 
 export const getOAuth2Client = (credentials?: Credentials) => {
