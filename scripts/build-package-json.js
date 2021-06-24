@@ -11,11 +11,12 @@ const rootdir = (...fragments) => {
 };
 
 const targets = {
-  mcs: rootdir('src/mcs'),
   server: rootdir('dist'),
+  mcs: rootdir('dist/mcs-workdir'),
 };
 
 fs.mkdirSync(rootdir('dist'), { recursive: true });
+fs.mkdirSync(rootdir('dist/mcs-workdir'), { recursive: true });
 
 Object.entries(targets).forEach(([target, dest]) => {
   const { scripts = {}, dependencies: targetDependencies = {} } = rootPackage[target];

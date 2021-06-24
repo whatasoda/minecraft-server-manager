@@ -6,7 +6,7 @@ import ResponseResult from '../shared/responseResult';
 
 const { metadata, waitForMetadataLoad } = CloudMetadata({
   tokenSecret: {
-    path: '/computeMetadata/v1/instance/mcs-token-secret',
+    path: '/computeMetadata/v1/attributes/mcs-token-secret',
     fallback: '',
   },
   hostname: {

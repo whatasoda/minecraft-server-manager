@@ -41,10 +41,11 @@
   },
   "mcs": {
     "scripts": {
-      "start": "ts-node-transpile-only ./index.ts"
+      "start": "ts-node-transpile-only repo/src/mcs"
     },
     "dependencies": {
       "express": true,
+      "node-fetch": true,
       "ts-node": true,
       "typescript": true
     }

@@ -52,7 +52,7 @@ shutdown:
 	@$(MAKE) kill-agent || true
 
 download-repo-data:
-	@ \
+	@\
 		if [ ! -e ./repo/package.json ]; then \
 			printf 'No repo data found, downloading...'; \
 			curl -fsSL https://github.com/whatasoda/minecraft-server-manager/archive/refs/heads/$(GIT_TAG).zip > /tmp/repo.zip; \
@@ -63,7 +63,7 @@ download-repo-data:
 		fi
 
 download-server-jar:
-	@ \
+	@\
 		if [ ! -e ./$(MINECRAFT)/server.jar ]; then \
 			printf 'No server.jar found, downloading...'; \
 			mkdir ./$(MINECRAFT); \
@@ -76,7 +76,7 @@ download-server-jar:
 		fi
 
 sc.minecraft:
-	@ \
+	@\
 		cd ./$(MINECRAFT) && \
 		echo "#$(shell date '+%c (UTC%z)')" > eula.txt; \
 		echo "eula=true" >> eula.txt; \
@@ -101,7 +101,7 @@ exec-command-minecraft:
 
 load-minecraft-data:
 	@echo 'Loading minecraft server data...'
-	@ \
+	@\
 		result=0; gsutil -q stat $(GCS_BASE)/$(MINECRAFT)/server.jar || result=$$?; \
 		if [ "$$result" == "0" ]; then \
 			echo 'Loading from GCS'; \
@@ -129,9 +129,13 @@ stop-minecraft:
 	@echo 'Successfully stopped minecraft server!'
 
 sc.agent:
-	@node repo/scripts/build-package-json.js
-	@NODE_ENV=production npm ci --prefix repo/src/mcs
-	@NODE_ENV=production npm run start --prefix repo/src/mcs
+	@\
+		if [ ! -e repo/src/node_modules ]; then \
+			node repo/scripts/build-package-json.js \
+			mv repo/dist/mcs-workdir/* ./ \
+			NODE_ENV=production npm ci \
+		fi
+	@NODE_ENV=production npm run start
 
 start-agent:
 	@echo 'Starting agent server...'
