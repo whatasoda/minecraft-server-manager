@@ -4,3 +4,4 @@ dist
 zip
 oauth2.keys.json
 .sessions
+.mcs-token-secret.json

@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "if [ ! -e '.mcs-token-secret' ]; then sh scripts/secretgen.sh > .mcs-token-secret.json; fi",
     "dev": "ts-node-transpile-only scripts/dev.ts",
     "dev:client": "webpack serve --config scripts/webpack/config.dev.js",
     "dev:server": "nodemon",
