@@ -12,7 +12,7 @@ import {
 } from '../services/compute';
 import defineExpressEndpoint from '../../shared/expressEndpoint';
 import { MCS_TOKEN_SECRET, METADATA, PROJECT_ID } from '../constants';
-import evaluateToken from '../../shared/evaluateToken';
+import { createMcsAuthHeaders } from '../../shared/mcs-token';
 
 const mcs = express().use(withAuth());
 export default mcs;
@@ -83,7 +83,7 @@ const proxyToInstance = (createPath: (target: string) => string) => {
   return async (req: Request, res: Response) => {
     const { instance, target } = req.params;
     const hostname = `${instance}.${METADATA.zone}.c.${PROJECT_ID}.internal`;
-    const token = evaluateToken(hostname, MCS_TOKEN_SECRET);
+    const authHeaders = createMcsAuthHeaders(hostname, MCS_TOKEN_SECRET);
 
     let host = hostname;
     if (process.env.NODE_ENV !== 'production') {
@@ -98,9 +98,7 @@ const proxyToInstance = (createPath: (target: string) => string) => {
       host,
       port: 8000,
       path: createPath(target),
-      headers: {
-        'X-MCS-TOKEN': token,
-      },
+      headers: { ...authHeaders },
     }).pipe(res);
   };
 };
