@@ -1,6 +1,6 @@
 import express from 'express';
-import type { Request, Response } from 'express-serve-static-core';
-import { request } from 'http';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import type { ParamsDictionary } from 'express-serve-static-core';
 import { withAuth } from './auth';
 import {
   createInstance,
@@ -11,7 +11,7 @@ import {
   stopInstance,
 } from '../services/compute';
 import defineExpressEndpoint from '../../shared/expressEndpoint';
-import { MCS_TOKEN_SECRET, METADATA, PROJECT_ID } from '../constants';
+import { MCS_PORT, MCS_TOKEN_SECRET, METADATA, PROJECT_ID } from '../constants';
 import { createMcsAuthHeaders } from '../../shared/mcs-token';
 
 const mcs = express().use(withAuth());
@@ -79,41 +79,64 @@ mcsServerApis['/:instance/stop'](mcs, 'post');
 mcsServerApis['/:instance/delete'](mcs, 'post');
 mcsServerApis['/:instance/status'](mcs, 'get');
 
-const proxyToInstance = (createPath: (target: string) => string) => {
-  return async (req: Request, res: Response) => {
-    const { instance, target } = req.params;
-    const hostname = `${instance}.${METADATA.zone}.c.${PROJECT_ID}.internal`;
-    const authHeaders = createMcsAuthHeaders(hostname, MCS_TOKEN_SECRET);
+interface McsProxyConfig {
+  path: string;
+  pathRewrite: (params: ParamsDictionary) => string;
+}
 
-    let host = hostname;
-    if (process.env.NODE_ENV !== 'production') {
-      const extra = global.createRequestExtra?.(req) || {};
-      const { globalIP } = await getInstanceInfo(extra.compute!, instance!);
-      if (globalIP) {
-        host = globalIP;
-      }
-    }
+const PROXIES: McsProxyConfig[] = [
+  {
+    path: '/:instance/log/:target',
+    pathRewrite: ({ target }) => `/log/${target}`,
+  },
+  {
+    path: '/:instance/make-dispatch/:target',
+    pathRewrite: ({ target }) => `/make-dispatch/${target}`,
+  },
+  {
+    path: '/:instance/make-stream/:target',
+    pathRewrite: ({ target }) => `/make-stream/${target}`,
+  },
+];
 
-    request({
-      host,
-      port: 8000,
-      path: createPath(target),
-      headers: { ...authHeaders },
-    }).pipe(res);
-  };
-};
+PROXIES.forEach(({ path, pathRewrite }) => {
+  mcs.use(
+    path,
+    createProxyMiddleware({
+      pathRewrite: (_, req) => {
+        return pathRewrite(req.params);
+      },
+      router: async (req) => {
+        const { instance } = req.params;
+        const hostname = `${instance}.${METADATA.ZONE}.c.${PROJECT_ID}.internal`;
+        if (process.env.NODE_ENV === 'production') {
+          return `http://${hostname}:${MCS_PORT}`;
+        } else {
+          const extra = global.createRequestExtra?.(req) || {};
+          const { globalIP } = await getInstanceInfo(extra.compute!, instance!);
+          if (!globalIP) {
+            // eslint-disable-next-line no-console
+            console.log('Target instance inactive: skipped proxy');
+            throw {};
+          }
+          return `http://${globalIP}:${MCS_PORT}`;
+        }
+      },
+      onProxyReq: (proxyReq, req) => {
+        const { instance } = req.params;
+        const hostname = `${instance}.${METADATA.ZONE}.c.${PROJECT_ID}.internal`;
+        const authHeaders = createMcsAuthHeaders(hostname, MCS_TOKEN_SECRET);
 
-mcs.get(
-  '/:instance/log/:target',
-  proxyToInstance((target) => `/log/${target}`),
-);
-mcs.post(
-  '/:instance/make-dispatch/:target',
-  proxyToInstance((target) => `/make-dispatch/${target}`),
-);
-mcs.get(
-  '/:instance/make-stream/:target',
-  proxyToInstance((target) => `/make-stream/${target}`),
-);
+        Object.entries(authHeaders).forEach(([name, value]) => {
+          proxyReq.setHeader(name, value);
+        });
+      },
+    }),
+    (_, res) => {
+      // TODO: return json response, perhaps status code should be changed
+      res.status(404).send();
+    },
+  );
+});
 
 export type { mcsServerApis };

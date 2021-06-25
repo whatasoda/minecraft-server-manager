@@ -2,7 +2,7 @@ import express from 'express';
 import session from 'express-session';
 import path from 'path';
 import api from './apis';
-import { waitForMetadataLoad } from './constants';
+import { GAE_PORT, waitForMetadataLoad } from './constants';
 
 const isProd = process.env.NODE_ENV === 'production';
 const publicRoot = isProd ? path.resolve(__dirname, '../../public') : path.resolve(__dirname, '../../dist/public');
@@ -34,8 +34,8 @@ app.get('*', (_, res) => {
 });
 
 waitForMetadataLoad(() => {
-  app.listen(8080, 'localhost', () => {
+  app.listen(GAE_PORT, () => {
     // eslint-disable-next-line no-console
-    console.log('Server started on port 8080');
+    console.log(`Server started on http://localhost:${GAE_PORT}`);
   });
 });

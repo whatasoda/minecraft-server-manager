@@ -9,12 +9,12 @@ export default async function createInstanceConfig(
   vmName: string,
   { machineType = 'n2-standard-4', diskSizeGb = 100, javaMemorySizeGb = 10 }: InstanceConfig,
 ) {
-  const { zone } = METADATA;
+  const { ZONE } = METADATA;
   diskSizeGb = Math.floor(Math.max(10, diskSizeGb));
   javaMemorySizeGb = Math.floor(Math.max(2, javaMemorySizeGb));
 
   return {
-    machineType: `zones/${zone}/machineTypes/${machineType}`,
+    machineType: `zones/${ZONE}/machineTypes/${machineType}`,
     tags: {
       items: ['minecraft-server', process.env.NODE_ENV !== 'production' ? 'minecraft-server-dev' : null].filter(
         Boolean,
@@ -34,7 +34,7 @@ export default async function createInstanceConfig(
         initializeParams: {
           sourceImage: 'projects/ubuntu-os-cloud/global/images/family/ubuntu-2004-lts',
           diskSizeGb: `${diskSizeGb}`,
-          diskType: `zones/${zone}/diskTypes/pd-ssd`,
+          diskType: `zones/${ZONE}/diskTypes/pd-ssd`,
         },
         autoDelete: true,
       },
