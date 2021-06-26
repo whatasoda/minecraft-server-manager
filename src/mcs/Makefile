@@ -37,6 +37,7 @@ define screen-execute
 	fi
 endef
 
+.PHONY: startup
 startup:
 	@# NOTE: `sudo apt update` will be executed by startup script
 	@curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash -
@@ -47,10 +48,12 @@ startup:
 	@$(MAKE) start-minecraft || true
 	@$(MAKE) start-agent || true
 
+.PHONY: shutdown
 shutdown:
 	@$(MAKE) stop-minecraft || true
 	@$(MAKE) kill-agent || true
 
+.PHONY: download-repo-data
 download-repo-data:
 	@\
 		if [ ! -e ./repo/package.json ]; then \
@@ -62,6 +65,7 @@ download-repo-data:
 			printf 'done\n'; \
 		fi
 
+.PHONY: download-server-jar
 download-server-jar:
 	@\
 		if [ ! -e ./$(MINECRAFT)/server.jar ]; then \
@@ -75,6 +79,7 @@ download-server-jar:
 			printf 'done\n'; \
 		fi
 
+.PHONY: sc.minecraft
 sc.minecraft:
 	@\
 		cd ./$(MINECRAFT) && \
@@ -82,23 +87,28 @@ sc.minecraft:
 		echo "eula=true" >> eula.txt; \
 		java -Xmx$(JAVA_MEM_SIZE)G -Xms$(JAVA_MEM_SIZE)G -jar server.jar nogui
 
+.PHONY: start-minecraft
 start-minecraft:
 	@echo 'Starting minecraft server...'
 	@$(call screen-start,minecraft)
 	@$(call screen-execute,minecraft,colon "logfile flush 0^M")
 	@echo 'Successfully started minecraft server!'
 
+.PHONY: kill-minecraft
 kill-minecraft:
 	@echo 'Killing minecraft server...'
 	@$(call screen-execute,minecraft,kill)
 	@echo 'Successfully killed minecraft server!'
 
+.PHONY: log-minecraft
 log-minecraft:
 	@tail -Fn 10 make-minecraft.log
 
+.PHONY: exec-command-minecraft
 exec-command-minecraft:
 	@$(call screen-execute,minecraft,stuff "$(command)^M")
 
+.PHONY: load-minecraft-data
 load-minecraft-data:
 	@echo 'Loading minecraft server data...'
 	@\
@@ -110,16 +120,19 @@ load-minecraft-data:
 		fi
 	@echo 'Successfully loaded minecraft server data!'
 
+.PHONY: save-minecraft-data
 save-minecraft-data:
 	@echo 'Saving minecraft server data...'
+	@rm -rf /tmp/$(MINECRAFT)
 	@cp -r ./$(MINECRAFT) /tmp/$(MINECRAFT)
-	@rm /tmp/$(MINECRAFT)/server.jar
-	@rm /tmp/$(MINECRAFT)/*.log.gz
+	@rm -f /tmp/$(MINECRAFT)/server.jar
+	@rm -f /tmp/$(MINECRAFT)/*.log.gz
 	@zip -r /tmp/$(MINECRAFT).zip /tmp/$(MINECRAFT)
 	@gsutil cp /tmp/$(MINECRAFT).zip "$(GCS_BASE)/$(MINECRAFT)-$(shell TZ=UTC-9 date '+%Y-%m-%d-%H-%M-%S').zip"
 	@rm -rf /tmp/$(MINECRAFT) /tmp/$(MINECRAFT).zip
 	@echo 'Successfully saved minecraft server data!'
 
+.PHONY: stop-minecraft
 stop-minecraft:
 	@echo 'Stopping minecraft server...'
 	@$(call screen-execute,minecraft,stuff "/stop^M")
@@ -128,29 +141,34 @@ stop-minecraft:
 	@gsutil -m cp -r "./$(MINECRAFT)/*" "$(GCS_BASE)/$(MINECRAFT)"
 	@echo 'Successfully stopped minecraft server!'
 
+.PHONY: sc.agent
 sc.agent:
 	@\
 		if [ ! -e repo/src/node_modules ]; then \
-			node repo/scripts/build-package-json.js \
-			mv repo/dist/mcs-workdir/* ./ \
-			NODE_ENV=production npm ci \
+			node repo/scripts/build-package-json.js; \
+			mv repo/dist/mcs-workdir/* ./; \
+			NODE_ENV=production npm ci; \
 		fi
 	@NODE_ENV=production npm run start
 
+.PHONY: start-agent
 start-agent:
 	@echo 'Starting agent server...'
 	@$(call screen-start,agent)
 	@$(call screen-execute,agent,colon "logfile flush 5^M")
 	@echo 'Successfully started agent server!'
 
+.PHONY: kill-agent
 kill-agent:
 	@echo 'Killing agent server...'
 	@$(call screen-execute,agent,kill)
 	@echo 'Successfully killed agent server!'
 
+.PHONY: log-agent
 log-agent:
 	@tail -Fn 10 make-agent.log
 
+.PHONY: clear-log
 clear-log:
 	@rm ./make-*.log
 	@rm ./$(MINECRAFT)/*.log.gz
