@@ -28,7 +28,7 @@ const useContainer = containerHook(({ isProcessing, setProcessing }: SubmitProps
       return;
     }
     setProcessing(true);
-    const result = await mcs.create({}, body);
+    const result = await mcs.create(body);
     setProcessing(false);
     if (result.data) {
       actions.clear();

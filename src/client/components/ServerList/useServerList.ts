@@ -9,7 +9,7 @@ export default function useServerList() {
 
   const loadMoreServers = useCallback(async () => {
     const prevToken = pageToken.current;
-    const result = await mcs.list({}, { pageToken: prevToken });
+    const result = await mcs.list({ pageToken: prevToken });
     if (result.error === null) {
       const { instances, nextQuery } = result.data;
       pageToken.current = nextQuery;

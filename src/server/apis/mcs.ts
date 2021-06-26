@@ -1,6 +1,6 @@
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import type { ParamsDictionary } from 'express-serve-static-core';
+import type { Request, ParamsDictionary } from 'express-serve-static-core';
 import { withAuth } from './auth';
 import {
   createInstance,
@@ -10,74 +10,101 @@ import {
   startInstance,
   stopInstance,
 } from '../services/compute';
-import defineExpressEndpoint from '../../shared/expressEndpoint';
+import { defaultAdapter } from '../../shared/defaultRequestAdapter';
 import { MCS_PORT, MCS_TOKEN_SECRET, METADATA, PROJECT_ID } from '../constants';
 import { createMcsAuthHeaders } from '../../shared/mcs-token';
+import createRequestHandlers from '../../shared/requestHandlerFactory';
+import Compute from '@google-cloud/compute';
 
 const mcs = express().use(withAuth());
 export default mcs;
 
-interface Requests {
-  '/list': {
-    pageToken?: string;
-  };
-  '/create': {
-    name: string;
-    machineType: string;
-    diskSizeGb: number;
-    javaMemorySizeGb: number;
-  };
-  '/:instance/start': {};
-  '/:instance/stop': {};
-  '/:instance/delete': {};
-  '/:instance/status': {};
+const createCompute = (req: Request) => {
+  if (req.authClient) {
+    return new Compute({ projectId: PROJECT_ID, authClient: req.authClient });
+  } else {
+    return null;
+  }
+};
+
+export interface McsHandlers {
+  '/list': [
+    {
+      pageToken?: string;
+    },
+    {
+      instances: Minecraft.MachineInfo[];
+      nextQuery: string | undefined;
+    },
+  ];
+  '/create': [
+    {
+      name: string;
+      machineType: string;
+      diskSizeGb: number;
+      javaMemorySizeGb: number;
+    },
+    {},
+  ];
+  '/start': [{ instance: string }, {}];
+  '/stop': [{ instance: string }, {}];
+  '/delete': [{ instance: string }, {}];
+  '/status': [{ instance: string }, Minecraft.MachineInfo];
 }
 
-const mcsServerApis = defineExpressEndpoint.many<Requests>()({
-  '/list': async (_params, req, extra) => {
-    const { pageToken } = req;
-    const compute = extra.compute!;
+createRequestHandlers<McsHandlers>({
+  '/list': async (body, req) => {
+    const { pageToken } = body;
+    const compute = createCompute(req)!;
     const data = await listInstances(compute, pageToken);
     return data;
   },
-  '/create': async (_params, req, extra) => {
-    const { name, machineType, diskSizeGb, javaMemorySizeGb } = req;
-    const compute = extra.compute!;
+  '/create': async (body, req) => {
+    const { name, machineType, diskSizeGb, javaMemorySizeGb } = body;
+    const compute = createCompute(req)!;
     const data = await createInstance(compute, name, { machineType, diskSizeGb, javaMemorySizeGb });
     return data;
   },
-  '/:instance/start': async (params, _req, extra) => {
-    const { instance } = params;
-    const compute = extra.compute!;
-    const data = await startInstance(compute, instance!);
+  '/start': async (body, req) => {
+    const { instance } = body;
+    const compute = createCompute(req)!;
+    const data = await startInstance(compute, instance);
     return data;
   },
-  '/:instance/stop': async (params, _req, extra) => {
-    const { instance } = params;
-    const compute = extra.compute!;
-    const data = await stopInstance(compute, instance!);
+  '/stop': async (body, req) => {
+    const { instance } = body;
+    const compute = createCompute(req)!;
+    const data = await stopInstance(compute, instance);
     return data;
   },
-  '/:instance/delete': async (params, _req, extra) => {
-    const { instance } = params;
-    const compute = extra.compute!;
-    const data = await deleteInstance(compute, instance!);
+  '/delete': async (body, req) => {
+    const { instance } = body;
+    const compute = createCompute(req)!;
+    const data = await deleteInstance(compute, instance);
     return data;
   },
-  '/:instance/status': async (params, _req, extra) => {
-    const { instance } = params;
-    const compute = extra.compute!;
-    const data = await getInstanceInfo(compute, instance!);
+  '/status': async (body, req) => {
+    const { instance } = body;
+    const compute = createCompute(req)!;
+    const data = await getInstanceInfo(compute, instance);
     return data;
   },
+}).forEach((endpoint) => {
+  switch (endpoint.path) {
+    case '/create':
+    case '/start':
+    case '/stop':
+    case '/delete':
+      mcs.post(endpoint.path, endpoint.factory(defaultAdapter));
+      break;
+    case '/list':
+    case '/status':
+      mcs.get(endpoint.path, endpoint.factory(defaultAdapter));
+      break;
+    default:
+      endpoint; // Should be `never` here
+  }
 });
-
-mcsServerApis['/list'](mcs, 'get');
-mcsServerApis['/create'](mcs, 'post');
-mcsServerApis['/:instance/start'](mcs, 'post');
-mcsServerApis['/:instance/stop'](mcs, 'post');
-mcsServerApis['/:instance/delete'](mcs, 'post');
-mcsServerApis['/:instance/status'](mcs, 'get');
 
 interface McsProxyConfig {
   path: string;
@@ -112,8 +139,8 @@ PROXIES.forEach(({ path, pathRewrite }) => {
         if (process.env.NODE_ENV === 'production') {
           return `http://${hostname}:${MCS_PORT}`;
         } else {
-          const extra = global.createRequestExtra?.(req) || {};
-          const { globalIP } = await getInstanceInfo(extra.compute!, instance!);
+          const compute = createCompute(req)!;
+          const { globalIP } = await getInstanceInfo(compute, instance!);
           if (!globalIP) {
             // eslint-disable-next-line no-console
             console.log('Target instance inactive: skipped proxy');
@@ -138,5 +165,3 @@ PROXIES.forEach(({ path, pathRewrite }) => {
     },
   );
 });
-
-export type { mcsServerApis };

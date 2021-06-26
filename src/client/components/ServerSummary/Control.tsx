@@ -31,7 +31,7 @@ const useContainer = containerHook(({ isLoading, isProcessing, setProcessing, se
   const startInstance = async () => {
     if (canSubmit) {
       setProcessing(true);
-      const result = await mcs.start({ instance: name }, {});
+      const result = await mcs.start({ instance: name });
       if (result.error === null) {
         await refresh();
       }
@@ -42,7 +42,7 @@ const useContainer = containerHook(({ isLoading, isProcessing, setProcessing, se
   const stopInstance = async () => {
     if (canSubmit) {
       setProcessing(true);
-      const result = await mcs.stop({ instance: name }, {});
+      const result = await mcs.stop({ instance: name });
       if (result.error === null) {
         await refresh();
       }
@@ -53,7 +53,7 @@ const useContainer = containerHook(({ isLoading, isProcessing, setProcessing, se
   const deleteInstance = async () => {
     if (canSubmit) {
       setProcessing(true);
-      const result = await mcs.delete({ instance: name }, {});
+      const result = await mcs.delete({ instance: name });
       if (result.error === null) {
         setDeleted(true);
       }
@@ -64,7 +64,11 @@ const useContainer = containerHook(({ isLoading, isProcessing, setProcessing, se
   const startMinecraft = async () => {
     if (canSubmit) {
       setProcessing(true);
-      const result = await mcs.dispatch({ instance: name, target: 'start-minecraft' }, {});
+      const result = await mcs.dispatch({
+        instance: name,
+        target: 'start-minecraft',
+        params: {},
+      });
       if (result.error === null) {
         await refresh();
       }
@@ -75,7 +79,11 @@ const useContainer = containerHook(({ isLoading, isProcessing, setProcessing, se
   const stopMinecraft = async () => {
     if (canSubmit) {
       setProcessing(true);
-      const result = await mcs.dispatch({ instance: name, target: 'stop-minecraft' }, {});
+      const result = await mcs.dispatch({
+        instance: name,
+        target: 'stop-minecraft',
+        params: {},
+      });
       if (result.error === null) {
         await refresh();
       }
@@ -86,7 +94,11 @@ const useContainer = containerHook(({ isLoading, isProcessing, setProcessing, se
   const saveMinecraftData = async () => {
     if (canSubmit) {
       setProcessing(true);
-      const result = await mcs.dispatch({ instance: name, target: 'save-minecraft-data' }, {});
+      const result = await mcs.dispatch({
+        instance: name,
+        target: 'save-minecraft-data',
+        params: {},
+      });
       if (result.error === null) {
         await refresh();
       }

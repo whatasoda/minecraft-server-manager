@@ -1,18 +1,26 @@
 /* eslint-disable no-console */
 import express from 'express';
-import defineExpressEndpoint from '../shared/expressEndpoint';
 import withMcsAuth from './mcs-auth';
 import { logFile, makeDispatch, makeStream } from './make';
+import createRequestHandlers from '../shared/requestHandlerFactory';
+import { defaultAdapter } from '../shared/defaultRequestAdapter';
 
-// align path with `server`'s format
-interface Requests {
-  '/make-dispatch/:target': {};
+export interface McsHandlers {
+  '/make-dispatch': [
+    {
+      instance: string;
+      target: string;
+      params: {};
+    },
+    {},
+  ];
 }
-const mcsInstanceApis = defineExpressEndpoint.many<Requests>()({
-  '/make-dispatch/:target': async (params, req) => {
-    const { target } = params;
-    await makeDispatch(target!, req);
-    return { message: 'success' };
+
+const handlers = createRequestHandlers<McsHandlers>({
+  '/make-dispatch': async (body) => {
+    const { target, params } = body;
+    await makeDispatch(target!, params);
+    return {};
   },
 });
 
@@ -22,7 +30,13 @@ const createServer = async () => {
   app.use(await withMcsAuth());
   app.use(express.json());
 
-  mcsInstanceApis['/make-dispatch/:target'](app, 'post');
+  handlers.forEach((endpoint) => {
+    switch (endpoint.path) {
+      case '/make-dispatch':
+        app.post(endpoint.path, endpoint.factory(defaultAdapter));
+        break;
+    }
+  });
 
   app.get('/log/:target', (req, res) => {
     const { target } = req.params;
@@ -47,5 +61,3 @@ createServer().then((app) => {
     console.log('Agent server running at localhost:8000');
   });
 });
-
-export type { mcsInstanceApis };

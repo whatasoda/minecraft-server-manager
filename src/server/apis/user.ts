@@ -1,19 +1,24 @@
 import express from 'express';
-import defineExpressEndpoint from '../../shared/expressEndpoint';
+import { defaultAdapter } from '../../shared/defaultRequestAdapter';
+import createRequestHandlers from '../../shared/requestHandlerFactory';
 import { withAuth } from './auth';
 
 const user = express().use(withAuth());
 export default user;
 
-interface Requests {
-  '/profile': {};
+export interface UserHandlers {
+  '/profile': [{}, {}];
 }
-const userApi = defineExpressEndpoint.many<Requests>()({
-  '/profile': async (_params, _req) => {
+createRequestHandlers<UserHandlers>({
+  '/profile': async () => {
     return {};
   },
+}).forEach((endpoint) => {
+  switch (endpoint.path) {
+    case '/profile':
+      user.get(endpoint.path, endpoint.factory(defaultAdapter));
+      break;
+    default:
+      endpoint; // Should be `never` here
+  }
 });
-
-userApi['/profile'](user, 'get');
-
-export type { userApi };

@@ -1,7 +1,7 @@
 import { RequestHandler } from 'express';
 import CloudMetadata from '../shared/cloud-metadata';
-import { ApiError } from '../shared/endpointFactory';
 import { veirfyRequest } from '../shared/mcs-token';
+import { ErrorResponse } from '../shared/requestHandlerFactory';
 import ResponseResult from '../shared/responseResult';
 
 const { metadata, waitForMetadataLoad } = CloudMetadata({
@@ -29,7 +29,7 @@ export default async function withMcsAuth(): Promise<RequestHandler> {
     if (veirfyRequest(req, hostname, tokenSecret)) {
       next();
     } else {
-      res.status(403).json(ResponseResult.error(new ApiError(403, 'missing token')));
+      res.status(403).json(ResponseResult.error(new ErrorResponse(403, 'missing token')));
     }
   };
 }

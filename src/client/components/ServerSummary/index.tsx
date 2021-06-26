@@ -26,7 +26,7 @@ const useContainer = containerHook((props: ServerSummaryProps) => {
   const refresh = async () => {
     if (canRefresh) {
       setLoading(true);
-      const result = await mcs.status({ instance: name }, {});
+      const result = await mcs.status({ instance: name });
       if (result.error === null) {
         setInstance(result.data);
       }

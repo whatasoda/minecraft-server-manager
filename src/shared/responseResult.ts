@@ -1,4 +1,4 @@
-import type { ApiError } from './endpointFactory';
+import { ErrorResponse } from './requestHandlerFactory';
 
 namespace ResponseResult {
   export type Result<T extends {}> = Success<T> | Error;
@@ -11,7 +11,7 @@ namespace ResponseResult {
     error: null;
   }
 
-  export function error(err: ApiError): Error {
+  export function error(err: ErrorResponse): Error {
     const { status, message } = err;
     return { data: null, error: { status, message } };
   }
