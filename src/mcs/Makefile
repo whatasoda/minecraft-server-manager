@@ -1,144 +1,85 @@
+.ONESHELL:
 SHELL=/bin/bash
+include .metadata
 # supposed to be placed at default workdir of startup-script
 
 MINECRAFT=minecraft
-GCS_BASE="gs://$(BUCKET_NAME)/$(SERVER_NAME)"
+GS_BASE=gs://$(BUCKET_NAME)/$(SERVER_NAME)
+GS_BACKUP_ZIP=$(GS_BASE)/backup-$(SERVER_NAME)-version-$(shell TZ=UTC-9 date '+%Y-%m-%d-%H-%M-%S').zip
+GS_SOURCE_DIR=$(GS_BASE)/source
+GS_SOURCE_SERVER_JAR=$(GS_SOURCE_DIR)/server.jar
+GS_SOURCE_DATAPACKS_DIR=$(GS_SOURCE_DIR)/world/datapacks
 
-define screen-exist
-	result=0; screen -p 0 -S make-$(1) -X stuff "" > /dev/null || result=$$?;
-endef
-
-define screen-start
-	$(call screen-exist,$(1)) \
-	if [ "$$result" == "0" ]; then \
-		echo "Screen 'make-$(1)' already exists."; \
-		result=1; \
-	else \
-		screen -p 0 -L -Logfile make-$(1).log -dmS make-$(1) $(MAKE) sc.$(1); \
-		result=0; \
-	fi
-endef
-
-define screen-execute
-	$(call screen-exist,$(1)) \
-	if [ "$$result" == "0" ]; then \
-		echo '$(2)' | xargs screen -p 0 -S make-$(1) -X; \
-		result=0; \
-	else \
-		echo "No screen 'make-$(1)' found."; \
-		result=1; \
-	fi
-endef
+SERVER_DIR=./minecraft
+SERVER_JAR=$(SERVER_DIR)/server.jar
+DATAPACKS_DIR=$(SERVER_DIR)/world/datapacks
 
 .PHONY: startup
 startup:
-	@$(MAKE) download-server-jar || true
-	@$(MAKE) start-minecraft || true
-	@$(MAKE) start-agent || true
+	@
+	$(MAKE) load-server || true
+	$(MAKE) start-server || true
+	$(MAKE) start-agent || true
 
 .PHONY: shutdown
 shutdown:
-	@$(MAKE) stop-minecraft || true
-	@$(MAKE) kill-agent || true
+	@
+	$(MAKE) stop-server || true
+	$(MAKE) stop-agent || true
 
-.PHONY: download-server-jar
-download-server-jar:
-	@\
-		if [ ! -e ./$(MINECRAFT)/server.jar ]; then \
-			printf 'No server.jar found, downloading...'; \
-			mkdir ./$(MINECRAFT); \
-			curl -fsSL https://launchermeta.mojang.com/mc/game/version_manifest.json | \
-				jq '.versions[0].url' | \
-				xargs curl -fsSL | \
-				jq '.downloads.server.url' | \
-				xargs curl -fsSL > ./$(MINECRAFT)/server.jar; \
-			printf 'done\n'; \
+.PHONY: assert-server-stopped
+assert-server-stopped:
+	@
+	if $(call screen-exist,$(1)); then
+		exit 1
+	else
+		exit 0
+	fi
+
+.PHONY: load-server
+load-server: assert-server-stopped
+	@
+	if [ ! -e $(SERVER_JAR) ]; then
+		rm -rf $(SERVER_DIR)
+		mkdir -p $(SERVER_DIR)
+		if gsutil -q stat "$(GS_SOURCE_SERVER_JAR)"; then
+			gsutil -m cp -r "$(GS_SOURCE_DIR)/*" "$(SERVER_DIR)/"
+		else
+			curl -fsSL $(SERVER_JAR_URL) > $(SERVER_JAR)
 		fi
+	fi
 
-.PHONY: sc.minecraft
-sc.minecraft:
-	@\
-		cd ./$(MINECRAFT) && \
-		echo "#$(shell date '+%c (UTC%z)')" > eula.txt; \
-		echo "eula=true" >> eula.txt; \
-		java -Xmx$(JAVA_MEMORY_SIZE)G -Xms$(JAVA_MEMORY_SIZE)G -jar server.jar nogui
+.PHONY: load-datapacks
+load-datapacks:
+	@
+	if gsutil -q stat "$(GS_SOURCE_DATAPACKS_DIR)"; then
+		gsutil -m cp -r "$(GS_SOURCE_DATAPACKS_DIR)/*" "$(DATAPACKS_DIR)/" || true
+	fi
 
-.PHONY: start-minecraft
-start-minecraft:
-	@echo 'Starting minecraft server...'
-	@$(call screen-start,minecraft)
-	@$(call screen-execute,minecraft,colon "logfile flush 0^M")
-	@echo 'Successfully started minecraft server!'
+.PHONY: backup-server
+backup-server:
+	@
+	TEMP_ZIP=$(shell mktemp)
+	TEMP_DIR=$(shell mktemp -d)
+	cp -r $(SERVER_DIR) $$TEMP_DIR
+	rm -f $$TEMP_DIR/{server.jar,*.log.gz}
+	zip -r $$TEMP_ZIP $$TEMP_DIR
+	gsutil cp $$TEMP_ZIP $(GS_BACKUP_ZIP)
+	rm -rf $$TEMP_ZIP $$TEMP_DIR
 
-.PHONY: kill-minecraft
-kill-minecraft:
-	@echo 'Killing minecraft server...'
-	@$(call screen-execute,minecraft,kill)
-	@echo 'Successfully killed minecraft server!'
+.PHONY: update-server-source
+update-server-source:
+	@
+	gsutil -m rm "$(GS_SOURCE_DIR)/**" || true
+	gsutil -m cp -r "$(SERVER_DIR)/*" "$(GS_SOURCE_DIR)/"
+
+.PHONY: server-command
+server-command:
+	@$(call screen-execute,minecraft,stuff "$(command)^M") || true
 
 .PHONY: log-minecraft
 log-minecraft:
 	@tail -Fn 10 make-minecraft.log
-
-.PHONY: exec-command-minecraft
-exec-command-minecraft:
-	@$(call screen-execute,minecraft,stuff "$(command)^M")
-
-.PHONY: load-minecraft-data
-load-minecraft-data:
-	@echo 'Loading minecraft server data...'
-	@\
-		result=0; gsutil -q stat $(GCS_BASE)/$(MINECRAFT)/server.jar || result=$$?; \
-		if [ "$$result" == "0" ]; then \
-			echo 'Loading from GCS'; \
-			rm -rf ./$(MINECRAFT); \
-			gsutil cp -r "$(GCS_BASE)/$(MINECRAFT)" .; \
-		fi
-	@echo 'Successfully loaded minecraft server data!'
-
-.PHONY: save-minecraft-data
-save-minecraft-data:
-	@echo 'Saving minecraft server data...'
-	@rm -rf /tmp/$(MINECRAFT)
-	@cp -r ./$(MINECRAFT) /tmp/$(MINECRAFT)
-	@rm -f /tmp/$(MINECRAFT)/server.jar
-	@rm -f /tmp/$(MINECRAFT)/*.log.gz
-	@zip -r /tmp/$(MINECRAFT).zip /tmp/$(MINECRAFT)
-	@gsutil cp /tmp/$(MINECRAFT).zip "$(GCS_BASE)/$(MINECRAFT)-$(shell TZ=UTC-9 date '+%Y-%m-%d-%H-%M-%S').zip"
-	@rm -rf /tmp/$(MINECRAFT) /tmp/$(MINECRAFT).zip
-	@echo 'Successfully saved minecraft server data!'
-
-.PHONY: stop-minecraft
-stop-minecraft:
-	@echo 'Stopping minecraft server...'
-	@$(call screen-execute,minecraft,stuff "/stop^M")
-	@$(call screen-execute,minecraft,kill)
-	@gsutil -m rm "$(GCS_BASE)/$(MINECRAFT)/**" || true
-	@gsutil -m cp -r "./$(MINECRAFT)/*" "$(GCS_BASE)/$(MINECRAFT)"
-	@echo 'Successfully stopped minecraft server!'
-
-.PHONY: sc.agent
-sc.agent:
-	@\
-		if [ ! -e repo/src/node_modules ]; then \
-			node repo/scripts/build-package-json.js; \
-			mv repo/dist/mcs-workdir/* ./; \
-			NODE_ENV=production npm ci; \
-		fi
-	@NODE_ENV=production npm run start
-
-.PHONY: start-agent
-start-agent:
-	@echo 'Starting agent server...'
-	@$(call screen-start,agent)
-	@$(call screen-execute,agent,colon "logfile flush 5^M")
-	@echo 'Successfully started agent server!'
-
-.PHONY: kill-agent
-kill-agent:
-	@echo 'Killing agent server...'
-	@$(call screen-execute,agent,kill)
-	@echo 'Successfully killed agent server!'
 
 .PHONY: log-agent
 log-agent:
@@ -146,5 +87,68 @@ log-agent:
 
 .PHONY: clear-log
 clear-log:
-	@rm ./make-*.log
-	@rm ./$(MINECRAFT)/*.log.gz
+	@rm -f ./make-*.log $(SERVER_DIR)/*.log.gz
+
+#
+# SCREEN
+#
+define screen-exist
+	screen -p 0 -S make-$(1) -X stuff "" &> /dev/null
+endef
+
+define screen-execute
+	if $(call screen-exist,$(1)); then \
+		echo '$(2)' | xargs screen -p 0 -S make-$(1) -X; \
+		true; \
+	else \
+		echo "No screen 'make-$(1)' found."; \
+		false; \
+	fi
+endef
+
+define screen-start
+	if $(call screen-exist,$(1)); then \
+		echo "Screen 'make-$(1)' already exists."; \
+		false; \
+	else \
+		screen -p 0 -L -Logfile make-$(1).log -dmS make-$(1) $(MAKE) sc.$(1); \
+		$(call screen-execute,minecraft,colon "logfile flush 0^M"); \
+		true; \
+	fi
+endef
+
+.PHONY: start-server
+start-server:
+	@$(call screen-start,minecraft)
+
+.PHONY: stop-server
+stop-server:
+	@
+	$(call screen-execute,minecraft,stuff "/stop^M") || true
+	$(call screen-execute,minecraft,kill) || true
+
+.PHONY: sc.minecraft
+sc.minecraft:
+	@
+	cd $(SERVER_DIR)
+	echo "#$(shell date '+%c (UTC%z)')" > eula.txt
+	echo "eula=true" >> eula.txt
+	java -Xmx$(JAVA_MEMORY_SIZE)G -Xms$(JAVA_MEMORY_SIZE)G -jar server.jar nogui
+
+.PHONY: start-agent
+start-agent:
+	@$(call screen-start,agent)
+
+.PHONY: stop-agent
+stop-agent:
+	@$(call screen-execute,agent,kill) || true
+
+.PHONY: sc.agent
+sc.agent:
+	@
+	if [ ! -e repo/src/node_modules ]; then
+		node repo/scripts/build-package-json.js
+		mv repo/dist/mcs-workdir/* ./
+		NODE_ENV=production npm ci
+	fi
+	NODE_ENV=production npm run start
