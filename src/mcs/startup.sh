@@ -15,6 +15,7 @@ fi
 echo '' > .metadata
 
 export REVISION=main
+export TIMEZONE=UTC-9
 export JAVA_MEM_SIZE=2
 export JAVA_PACKAGE_NAME=openjdk-16-jdk-headless
 
@@ -38,6 +39,7 @@ export_metadata SERVER_NAME name
 export_metadata SERVER_HOST hostname
 export_metadata REVISION attributes/revision
 export_metadata BUCKET_NAME attributes/bucket-name
+export_metadata TIMEZONE attributes/timezone
 export_metadata MCS_TOKEN_SECRET attributes/mcs-token-secret
 export_metadata JAVA_MEMORY_SIZE attributes/java-memory-size
 export_metadata JAVA_PACKAGE_NAME attributes/java-package-name

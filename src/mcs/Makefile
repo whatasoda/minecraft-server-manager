@@ -5,7 +5,7 @@ include .metadata
 
 MINECRAFT=minecraft
 GS_BASE=gs://$(BUCKET_NAME)/$(SERVER_NAME)
-GS_BACKUP_ZIP=$(GS_BASE)/backup-$(SERVER_NAME)-version-$(shell TZ=UTC-9 date '+%Y-%m-%d-%H-%M-%S').zip
+GS_BACKUP_ZIP=$(GS_BASE)/backup-$(SERVER_NAME)-$(shell TZ=$(TIMEZONE) date '+%Y-%m-%d-%H-%M-%S').zip
 GS_SOURCE_DIR=$(GS_BASE)/source
 GS_SOURCE_SERVER_JAR=$(GS_SOURCE_DIR)/server.jar
 GS_SOURCE_DATAPACKS_DIR=$(GS_SOURCE_DIR)/world/datapacks
@@ -29,24 +29,25 @@ shutdown:
 
 .PHONY: assert-server-stopped
 assert-server-stopped:
-	@
-	if $(call screen-exist,$(1)); then
-		exit 1
-	else
-		exit 0
-	fi
+	@if $(call screen-exist,$(1)); then exit 1; fi
 
 .PHONY: load-server
 load-server: assert-server-stopped
 	@
-	if [ ! -e $(SERVER_JAR) ]; then
-		rm -rf $(SERVER_DIR)
-		mkdir -p $(SERVER_DIR)
-		if gsutil -q stat "$(GS_SOURCE_SERVER_JAR)"; then
-			gsutil -m cp -r "$(GS_SOURCE_DIR)/*" "$(SERVER_DIR)/"
-		else
-			curl -fsSL $(SERVER_JAR_URL) > $(SERVER_JAR)
-		fi
+	case "$(mode)" in
+		"force")
+			rm -rf $(SERVER_DIR)
+			;;
+		*)
+			if [ -e $(SERVER_DIR) ]; then exit 1; fi
+			;;
+	esac
+	mkdir -p $(SERVER_DIR)
+	if gsutil -q stat "$(GS_SOURCE_SERVER_JAR)"; then
+		gsutil -m cp -r "$(GS_SOURCE_DIR)/*" "$(SERVER_DIR)/"
+	else
+		curl -fsSL $(SERVER_JAR_URL) > $(SERVER_JAR)
+		echo -e "# $(shell date '+%c (UTC%z)')\neula=true" > eula.txt
 	fi
 
 .PHONY: load-datapacks
@@ -131,8 +132,6 @@ stop-server:
 sc.minecraft:
 	@
 	cd $(SERVER_DIR)
-	echo "#$(shell date '+%c (UTC%z)')" > eula.txt
-	echo "eula=true" >> eula.txt
 	java -Xmx$(JAVA_MEMORY_SIZE)G -Xms$(JAVA_MEMORY_SIZE)G -jar server.jar nogui
 
 .PHONY: start-agent
