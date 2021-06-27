@@ -1,13 +1,6 @@
 SHELL=/bin/bash
 # supposed to be placed at default workdir of startup-script
 
-SERVER_NAME=# compute engine instance name
-BUCKET_NAME=# bucket name to use for data of server
-JAVA_MEM_SIZE=2# memory size of java process
-GIT_TAG=main
-
-####_VARIABLE_DEFINITION_####
-
 MINECRAFT=minecraft
 GCS_BASE="gs://$(BUCKET_NAME)/$(SERVER_NAME)"
 
@@ -39,11 +32,6 @@ endef
 
 .PHONY: startup
 startup:
-	@# NOTE: `sudo apt update` will be executed by startup script
-	@curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash -
-	@sudo apt-get install -y openjdk-16-jdk-headless zip screen jq nodejs
-	@sudo apt-get clean
-	@$(MAKE) download-repo-data || true
 	@$(MAKE) download-server-jar || true
 	@$(MAKE) start-minecraft || true
 	@$(MAKE) start-agent || true
@@ -53,18 +41,6 @@ shutdown:
 	@$(MAKE) stop-minecraft || true
 	@$(MAKE) kill-agent || true
 
-.PHONY: download-repo-data
-download-repo-data:
-	@\
-		if [ ! -e ./repo/package.json ]; then \
-			printf 'No repo data found, downloading...'; \
-			curl -fsSL https://github.com/whatasoda/minecraft-server-manager/archive/refs/heads/$(GIT_TAG).zip > /tmp/repo.zip; \
-			unzip /tmp/repo.zip -d /tmp/repo; \
-			mv /tmp/repo/* ./repo; \
-			rm /tmp/repo.zip; \
-			printf 'done\n'; \
-		fi
-
 .PHONY: download-server-jar
 download-server-jar:
 	@\
@@ -72,10 +48,10 @@ download-server-jar:
 			printf 'No server.jar found, downloading...'; \
 			mkdir ./$(MINECRAFT); \
 			curl -fsSL https://launchermeta.mojang.com/mc/game/version_manifest.json | \
-			jq '.versions[0].url' | \
-			xargs curl -fsSL | \
-			jq '.downloads.server.url' | \
-			xargs curl -fsSL > ./$(MINECRAFT)/server.jar; \
+				jq '.versions[0].url' | \
+				xargs curl -fsSL | \
+				jq '.downloads.server.url' | \
+				xargs curl -fsSL > ./$(MINECRAFT)/server.jar; \
 			printf 'done\n'; \
 		fi
 
@@ -85,7 +61,7 @@ sc.minecraft:
 		cd ./$(MINECRAFT) && \
 		echo "#$(shell date '+%c (UTC%z)')" > eula.txt; \
 		echo "eula=true" >> eula.txt; \
-		java -Xmx$(JAVA_MEM_SIZE)G -Xms$(JAVA_MEM_SIZE)G -jar server.jar nogui
+		java -Xmx$(JAVA_MEMORY_SIZE)G -Xms$(JAVA_MEMORY_SIZE)G -jar server.jar nogui
 
 .PHONY: start-minecraft
 start-minecraft:

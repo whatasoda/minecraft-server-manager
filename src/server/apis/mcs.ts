@@ -117,12 +117,12 @@ const PROXIES: McsProxyConfig[] = [
     pathRewrite: ({ target }) => `/log/${target}`,
   },
   {
-    path: '/:instance/make-dispatch/:target',
-    pathRewrite: ({ target }) => `/make-dispatch/${target}`,
+    path: '/make-dispatch',
+    pathRewrite: () => `/make-dispatch`,
   },
   {
-    path: '/:instance/make-stream/:target',
-    pathRewrite: ({ target }) => `/make-stream/${target}`,
+    path: '/make-stream',
+    pathRewrite: () => `/make-stream`,
   },
 ];
 
@@ -134,7 +134,7 @@ PROXIES.forEach(({ path, pathRewrite }) => {
         return pathRewrite(req.params);
       },
       router: async (req) => {
-        const { instance } = req.params;
+        const { instance } = req.params.instance || req.body.instance;
         const hostname = `${instance}.${METADATA.ZONE}.c.${PROJECT_ID}.internal`;
         if (process.env.NODE_ENV === 'production') {
           return `http://${hostname}:${MCS_PORT}`;

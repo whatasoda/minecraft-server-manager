@@ -5,10 +5,11 @@ import { mcsdir } from '../shared/workdir';
 type InstanceConfig = Omit<Minecraft.MachineConfig, 'name'>;
 
 // https://cloud.google.com/compute/docs/reference/rest/v1/instances
-export default async function createInstanceConfig(
-  vmName: string,
-  { machineType = 'n2-standard-4', diskSizeGb = 100, javaMemorySizeGb = 10 }: InstanceConfig,
-) {
+export default async function createInstanceConfig({
+  machineType = 'n2-standard-4',
+  diskSizeGb = 100,
+  javaMemorySizeGb = 10,
+}: InstanceConfig) {
   const { ZONE } = METADATA;
   diskSizeGb = Math.floor(Math.max(10, diskSizeGb));
   javaMemorySizeGb = Math.floor(Math.max(2, javaMemorySizeGb));
@@ -41,10 +42,11 @@ export default async function createInstanceConfig(
     ],
     metadata: {
       items: [
-        { key: 'java-memory-size', value: javaMemorySizeGb },
-        { key: 'startup-script', value: await startupScript(vmName, javaMemorySizeGb) },
+        { key: 'startup-script', value: await startupScript() },
         { key: 'shutdown-script', value: await shutdownScript() },
+        { key: 'bucket-name', value: BUCKET_NAME },
         { key: 'mcs-token-secret', value: MCS_TOKEN_SECRET },
+        { key: 'java-memory-size', value: javaMemorySizeGb },
       ],
     },
     serviceAccounts: [
@@ -57,33 +59,11 @@ export default async function createInstanceConfig(
   };
 }
 
-export const startupScript = async (vmName: string, javaMemorySize: number) => {
-  const [makefileTemplate, startupTemplate] = await Promise.all([
-    fs.readFile(mcsdir('Makefile'), 'utf-8'),
-    fs.readFile(mcsdir('startup.sh'), 'utf-8'),
-  ]);
-
-  javaMemorySize = Math.floor(javaMemorySize);
-  const variables = {
-    BUCKET_NAME: BUCKET_NAME,
-    JAVA_MEM_SIZE: isNaN(javaMemorySize) ? null : javaMemorySize,
-    SERVER_NAME: vmName,
-  };
-  const makefile = makefileTemplate.replace(
-    '####_VARIABLE_DEFINITION_####',
-    Object.entries(variables).reduce((acc, [key, value]) => {
-      if (value !== null) {
-        acc += `${key}=${value}\n`;
-      }
-      return acc;
-    }, ''),
-  );
-
-  const startup = startupTemplate.replace('####_MAKEFILE_####', makefile.replace(/\$/g, '$$$$'));
-
-  return startup;
+// TODO: store them as a JSON on build time
+export const startupScript = async () => {
+  return await fs.readFile(mcsdir('startup.sh'), 'utf-8');
 };
 
 const shutdownScript = async () => {
-  return await fs.readFile(mcsdir('Makefile'), 'utf-8');
+  return await fs.readFile(mcsdir('shutdown.sh'), 'utf-8');
 };

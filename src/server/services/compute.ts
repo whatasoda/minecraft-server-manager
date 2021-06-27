@@ -73,7 +73,7 @@ export const createInstance = async (
 ): Promise<{ message: string }> => {
   const zone = compute.zone(METADATA.ZONE);
   const vm = zone.vm(vmName);
-  const instanceConfig = await createInstanceConfig(vmName, config);
+  const instanceConfig = await createInstanceConfig(config);
   const [, operation] = (await vm.create(instanceConfig)) as [VM, Operation];
   await operation.promise();
   return { message: 'success' };
