@@ -1,9 +1,7 @@
 .ONESHELL:
 SHELL=/bin/bash
 include .metadata
-# supposed to be placed at default workdir of startup-script
 
-MINECRAFT=minecraft
 GS_BASE=gs://$(BUCKET_NAME)/$(SERVER_NAME)
 GS_BACKUP_ZIP=$(GS_BASE)/backup-$(SERVER_NAME)-$(shell TZ=$(TIMEZONE) date '+%Y-%m-%d-%H-%M-%S').zip
 GS_SOURCE_DIR=$(GS_BASE)/source
@@ -13,6 +11,8 @@ GS_SOURCE_DATAPACKS_DIR=$(GS_SOURCE_DIR)/world/datapacks
 SERVER_DIR=./minecraft
 SERVER_JAR=$(SERVER_DIR)/server.jar
 DATAPACKS_DIR=$(SERVER_DIR)/world/datapacks
+
+SERVER_STATUS_JS=./repo/src/mcs/server-status.js
 
 .PHONY: startup
 startup:
@@ -30,6 +30,21 @@ shutdown:
 .PHONY: assert-server-stopped
 assert-server-stopped:
 	@if $(call screen-exist,$(1)); then exit 1; fi
+
+.PHONY: assert-server-started
+assert-server-started:
+	@
+	if ! $(call screen-exist,$(1)); then exit 1; fi
+	if ! node $(SERVER_STATUS_JS) &> /dev/null; then exit 1; fi
+
+.PHONY: server-status
+server-status:
+	@
+	key=data
+	if ! data=$(shell node $(SERVER_STATUS_JS) 2>&1); then
+		key=error
+	fi
+	echo $$data | jq "{ $$key: . }"
 
 .PHONY: load-server
 load-server: assert-server-stopped
@@ -63,7 +78,7 @@ backup-server:
 	TEMP_ZIP=$(shell mktemp)
 	TEMP_DIR=$(shell mktemp -d)
 	cp -r $(SERVER_DIR) $$TEMP_DIR
-	rm -f $$TEMP_DIR/{server.jar,*.log.gz}
+	rm -f "$$TEMP_DIR/{server.jar,**/*.log.gz,**/*.log}"
 	zip -r $$TEMP_ZIP $$TEMP_DIR
 	gsutil cp $$TEMP_ZIP $(GS_BACKUP_ZIP)
 	rm -rf $$TEMP_ZIP $$TEMP_DIR
@@ -75,7 +90,7 @@ update-server-source:
 	gsutil -m cp -r "$(SERVER_DIR)/*" "$(GS_SOURCE_DIR)/"
 
 .PHONY: server-command
-server-command:
+server-command: assert-server-started
 	@$(call screen-execute,minecraft,stuff "$(command)^M") || true
 
 .PHONY: log-minecraft
@@ -88,7 +103,7 @@ log-agent:
 
 .PHONY: clear-log
 clear-log:
-	@rm -f ./make-*.log $(SERVER_DIR)/*.log.gz
+	@rm -f ./make-*.log "$(SERVER_DIR)/{**/*.log.gz,**/*.log}"
 
 #
 # SCREEN
@@ -132,6 +147,7 @@ stop-server:
 sc.minecraft:
 	@
 	cd $(SERVER_DIR)
+	# TODO: receive args from metadata
 	java -Xmx$(JAVA_MEMORY_SIZE)G -Xms$(JAVA_MEMORY_SIZE)G -jar server.jar nogui
 
 .PHONY: start-agent
@@ -144,10 +160,4 @@ stop-agent:
 
 .PHONY: sc.agent
 sc.agent:
-	@
-	if [ ! -e repo/src/node_modules ]; then
-		node repo/scripts/build-package-json.js
-		mv repo/dist/mcs-workdir/* ./
-		NODE_ENV=production npm ci
-	fi
-	NODE_ENV=production npm run start
+	@npm run start

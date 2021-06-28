@@ -12,7 +12,10 @@ fi
 if [ -e .metadata ]; then
   source .metadata
 fi
-echo '' > .metadata
+cat <<EOF > .metadata
+export NODE_ENV=production
+EOF
+source .metadata
 
 export REVISION=main
 export TIMEZONE=UTC-9
@@ -22,7 +25,7 @@ export JAVA_PACKAGE_NAME=openjdk-16-jdk-headless
 if [ -z "$SERVER_JAR_URL" ]; then
   TEMP_FILE=$(mktemp)
   curl -fsSL https://launchermeta.mojang.com/mc/game/version_manifest.json | \
-    jq '.versions[0].url' | \
+    jq '[.versions[] | select(.type == "release")][0] | .url' | \
     xargs curl -fsSL | \
     jq '.downloads.server.url' > $TEMP_FILE
   export SERVER_JAR_URL=$(cat $TEMP_FILE)
@@ -60,6 +63,12 @@ if [ ! -e /root/repo/package.json ]; then
   mv $TEMP_DIR/* /root/repo
   rm -rf $TEMP_ZIP $TEMP_DIR
   printf "done\n"
+fi
+
+if [ ! -e /root/node_modules ]; then
+  node repo/scripts/build-package-json.js
+  mv repo/dist/mcs-workdir/* /root/
+  npm ci
 fi
 
 cp repo/src/mcs/Makefile .
