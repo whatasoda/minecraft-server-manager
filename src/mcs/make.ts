@@ -1,5 +1,4 @@
 import child_process, { ChildProcess } from 'child_process';
-import type * as stream from 'stream';
 import workdir from '../shared/workdir';
 
 type MakeArgs = [target: string, params?: Record<string, string>];
@@ -37,29 +36,4 @@ export const makeDispatch = async (...args: MakeArgs) => {
   });
 };
 
-const streamTargets = ['log-minecraft', 'log-agent'];
-export const makeStream = (dist: stream.Writable, ...args: MakeArgs) => {
-  const cp = make(streamTargets, ...args);
-  connectProcessToStream(cp, dist);
-  return cp;
-};
-const connectProcessToStream = (cp: ChildProcess, dist: stream.Writable) => {
-  cp.stdout?.on('data', (data) => {
-    dist.write(data);
-  });
-  cp.stderr?.on('data', (data) => {
-    dist.write(data);
-  });
-  cp.on('close', () => {
-    dist.end();
-  });
-  dist.on('close', () => {
-    if (cp.exitCode === null) {
-      cp.kill('SIGINT');
-    }
-  });
-};
-
-export const logFile = (target: string) => {
-  return workdir(`make-${target}.log`);
-};
+export const makeQuery = async () => {};

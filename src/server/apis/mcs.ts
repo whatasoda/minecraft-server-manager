@@ -87,6 +87,9 @@ createRequestHandlers<McsHandlers>({
     const { instance } = body;
     const compute = createCompute(req)!;
     const data = await getInstanceInfo(compute, instance);
+    // try {
+    //   const origin = await resolveMcsOrigin(instance, () => Promise.resolve(data));
+    // } catch (e) {}
     return data;
   },
 }).forEach((endpoint) => {
@@ -106,6 +109,16 @@ createRequestHandlers<McsHandlers>({
   }
 });
 
+const resolveMcsOrigin = async (instance: string, getInfo: () => Promise<Minecraft.MachineInfo>) => {
+  const hostname = `${instance}.${METADATA.ZONE}.c.${PROJECT_ID}.internal`;
+  if (process.env.NODE_ENV === 'production') {
+    return `http://${hostname}:${MCS_PORT}`;
+  } else {
+    const { globalIP } = await getInfo();
+    return globalIP ? `http://${globalIP}:${MCS_PORT}` : null;
+  }
+};
+
 interface McsProxyConfig {
   path: string;
   pathRewrite: (params: ParamsDictionary) => string;
@@ -113,16 +126,16 @@ interface McsProxyConfig {
 
 const PROXIES: McsProxyConfig[] = [
   {
-    path: '/:instance/log/:target',
-    pathRewrite: ({ target }) => `/log/${target}`,
+    path: '/log',
+    pathRewrite: () => `/log`,
   },
   {
-    path: '/make-dispatch',
-    pathRewrite: () => `/make-dispatch`,
+    path: '/status',
+    pathRewrite: () => `/status`,
   },
   {
-    path: '/make-stream',
-    pathRewrite: () => `/make-stream`,
+    path: '/make',
+    pathRewrite: () => `/make`,
   },
 ];
 
@@ -135,19 +148,16 @@ PROXIES.forEach(({ path, pathRewrite }) => {
       },
       router: async (req) => {
         const { instance } = req.params.instance || req.body.instance;
-        const hostname = `${instance}.${METADATA.ZONE}.c.${PROJECT_ID}.internal`;
-        if (process.env.NODE_ENV === 'production') {
-          return `http://${hostname}:${MCS_PORT}`;
-        } else {
+        const origin = await resolveMcsOrigin(instance, () => {
           const compute = createCompute(req)!;
-          const { globalIP } = await getInstanceInfo(compute, instance!);
-          if (!globalIP) {
-            // eslint-disable-next-line no-console
-            console.log('Target instance inactive: skipped proxy');
-            throw {};
-          }
-          return `http://${globalIP}:${MCS_PORT}`;
+          return getInstanceInfo(compute, instance!);
+        });
+        if (!origin) {
+          // eslint-disable-next-line no-console
+          console.log('Target instance inactive: skipped proxy');
+          throw {};
         }
+        return origin;
       },
       onProxyReq: (proxyReq, req) => {
         const { instance } = req.params;

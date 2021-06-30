@@ -41,7 +41,7 @@ assert-server-started:
 server-status:
 	@
 	key=data
-	if ! data=$(shell node $(SERVER_STATUS_JS) 2>&1); then
+	if ! data=$$(node $(SERVER_STATUS_JS) 2>&1); then
 		key=error
 	fi
 	echo $$data | jq "{ $$key: . }"
@@ -62,7 +62,7 @@ load-server: assert-server-stopped
 		gsutil -m cp -r "$(GS_SOURCE_DIR)/*" "$(SERVER_DIR)/"
 	else
 		curl -fsSL $(SERVER_JAR_URL) > $(SERVER_JAR)
-		echo -e "# $(shell date '+%c (UTC%z)')\neula=true" > eula.txt
+		echo -e "# $$(date '+%c (UTC%z)')\neula=true" > eula.txt
 	fi
 
 .PHONY: load-datapacks
@@ -75,8 +75,8 @@ load-datapacks:
 .PHONY: backup-server
 backup-server:
 	@
-	TEMP_ZIP=$(shell mktemp)
-	TEMP_DIR=$(shell mktemp -d)
+	TEMP_ZIP=$$(mktemp)
+	TEMP_DIR=$$(mktemp -d)
 	cp -r $(SERVER_DIR) $$TEMP_DIR
 	rm -f "$$TEMP_DIR/{server.jar,**/*.log.gz,**/*.log}"
 	zip -r $$TEMP_ZIP $$TEMP_DIR
