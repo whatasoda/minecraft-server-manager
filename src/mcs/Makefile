@@ -88,14 +88,6 @@ update-server-source:
 server-command: assert-server-started
 	@$(call screen-execute,minecraft,stuff "$(command)^M") || true
 
-.PHONY: log-minecraft
-log-minecraft:
-	@tail -Fn 10 make-minecraft.log
-
-.PHONY: log-agent
-log-agent:
-	@tail -Fn 10 make-agent.log
-
 .PHONY: clear-log
 clear-log:
 	@rm -f ./make-*.log "$(SERVER_DIR)/{**/*.log.gz,**/*.log}"

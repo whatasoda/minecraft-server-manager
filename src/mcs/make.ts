@@ -1,29 +1,34 @@
 import child_process, { ChildProcess } from 'child_process';
 import workdir from '../shared/workdir';
 
-type MakeArgs = [target: string, params?: Record<string, string>];
-
-const make = (availableTargets: string[], ...[target, params = {}]: MakeArgs): ChildProcess => {
-  if (availableTargets.includes(target)) {
-    const argv = Object.entries(params)
-      .map(([key, value]) => `${key}=${value}`)
-      .join(' ');
-    return child_process.exec(`make ${target} ${argv}`, { cwd: workdir() });
-  } else {
-    throw new Error(`No valid make target specified: '${target}'`);
-  }
+const createMakeFunc = <T extends string, U>(
+  targets: readonly T[],
+  handleChildProcess: (cp: ChildProcess) => Promise<U>,
+) => {
+  return function make(target: T, params: Record<string, string> = {}): Promise<U> {
+    if (targets.includes(target)) {
+      const argv = Object.entries(params)
+        .map(([key, value]) => `${key}=${value}`)
+        .join(' ');
+      const cp = child_process.exec(`make ${target} ${argv}`, { cwd: workdir() });
+      return handleChildProcess(cp);
+    } else {
+      throw new Error(`No valid make target specified: '${target}'`);
+    }
+  };
 };
 
+export type MakeDispatchTarget = typeof dispatchTargets[number];
 const dispatchTargets = [
-  'start-minecraft',
-  'kill-minecraft',
-  'exec-command-minecraft',
-  'save-minecraft-data',
-  'load-minecraft-data',
-  'stop-minecraft',
-];
-export const makeDispatch = async (...args: MakeArgs) => {
-  const cp = make(dispatchTargets, ...args);
+  'load-server',
+  'load-datapacks',
+  'backup-server',
+  'update-server-source',
+  'server-command',
+  'start-server',
+  'stop-server',
+] as const;
+export const makeDispatch = createMakeFunc(dispatchTargets, (cp) => {
   return new Promise<void>((resolve, reject) => {
     cp.stdout?.pipe(process.stdout);
     cp.on('close', (code) => {
@@ -34,16 +39,16 @@ export const makeDispatch = async (...args: MakeArgs) => {
       }
     });
   });
-};
+});
 
-const queryTargets = ['server-status'];
-export const makeQuery = async <T>(...args: MakeArgs) => {
-  const cp = make(queryTargets, ...args);
+export type MakeQueryTarget = typeof queryTargets[number];
+const queryTargets = ['server-status'] as const;
+export const makeQuery = createMakeFunc(queryTargets, async (cp) => {
   let data = '';
   cp.stdout?.on('data', (chunk: string) => {
     data += chunk;
   });
-  return new Promise<T>((resolve, reject) => {
+  return new Promise<{}>((resolve, reject) => {
     cp.on('close', (code) => {
       if (code === 0) {
         try {
@@ -56,4 +61,4 @@ export const makeQuery = async <T>(...args: MakeArgs) => {
       }
     });
   });
-};
+});

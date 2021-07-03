@@ -2,7 +2,7 @@
 import express from 'express';
 import fs from 'fs';
 import withMcsAuth from './mcs-auth';
-import { makeDispatch, makeQuery } from './make';
+import { makeDispatch, MakeDispatchTarget, makeQuery } from './make';
 import createRequestHandlers from '../shared/requestHandlerFactory';
 import { defaultAdapter } from '../shared/defaultRequestAdapter';
 import sliceLine from './slice-line';
@@ -16,7 +16,7 @@ export interface McsHandlers {
   '/log': [
     {
       instance: string;
-      target: string;
+      target: 'minecraft' | 'agent';
       stride: number;
       cursor?: number;
     },
@@ -26,7 +26,7 @@ export interface McsHandlers {
   '/make': [
     {
       instance: string;
-      target: string;
+      target: MakeDispatchTarget;
       params: {};
     },
     {},
@@ -40,11 +40,11 @@ createRequestHandlers<McsHandlers>({
     return sliceLine(raw, stride, cursor);
   },
   '/status': async () => {
-    return makeQuery<Minecraft.ApplicationStatus>('server-status');
+    return (await makeQuery('server-status')) as Minecraft.ApplicationStatus;
   },
   '/make': async (body) => {
     const { target, params } = body;
-    await makeDispatch(target!, params);
+    await makeDispatch(target, params);
     return {};
   },
 }).forEach((endpoint) => {
