@@ -1,6 +1,6 @@
 import type { McsHandlers as McsServerHandlers } from '../../server/apis/mcs';
 import type { McsHandlers as McsInstanceHandlers } from '../../mcs';
-import createApiClient from '../utils/apiClientFactory';
+import createApiClient from '../../shared/apiClientFactory';
 
 const mcsService = createApiClient<McsServerHandlers & McsInstanceHandlers>('/api/mcs')({
   list: ['/list', 'get'],
@@ -9,7 +9,7 @@ const mcsService = createApiClient<McsServerHandlers & McsInstanceHandlers>('/ap
   stop: ['/stop', 'post'],
   delete: ['/delete', 'post'],
   status: ['/status', 'get'],
-  dispatch: ['/make-dispatch', 'post'],
+  dispatch: ['/make', 'post'],
 });
 
 export default mcsService;

@@ -1,13 +1,12 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
-import type ResponseResult from '../../shared/responseResult';
+import type ResponseResult from './responseResult';
 
 type Method = 'get' | 'post';
+type Fetch<Req, Res> = (body: Req, baseURL?: string) => Promise<ResponseResult.Result<Res>>;
 
 export default function createApiClient<T extends {}>(baseURL: string) {
   type Target = [path: Extract<keyof T, string>, method: Method];
-  type RequestFunc<V extends Target> = T[V[0]] extends [infer Req, infer Res]
-    ? (body: Req) => Promise<ResponseResult.Result<Res>>
-    : never;
+  type RequestFunc<V extends Target> = T[V[0]] extends [infer Req, infer Res] ? Fetch<Req, Res> : never;
   interface TargetMap {
     [alias: string]: Target;
   }
@@ -35,17 +34,17 @@ export default function createApiClient<T extends {}>(baseURL: string) {
   };
 }
 
-const createFetch = (client: AxiosInstance, path: string, method: Method) => {
-  return function fetch(body: {}): Promise<ResponseResult.Result<any>> {
+const createFetch = (client: AxiosInstance, path: string, method: Method): Fetch<{}, any> => {
+  return function fetch(body: {}, baseURL?: string): Promise<ResponseResult.Result<any>> {
     switch (method) {
       case 'get':
         return client
-          .get<ResponseResult.Success<any>>(path, { params: body })
+          .get<ResponseResult.Success<any>>(path, { baseURL, params: body })
           .then(({ data }) => data)
           .catch(handleError);
       case 'post':
         return client
-          .post<ResponseResult.Success<any>>(path, body)
+          .post<ResponseResult.Success<any>>(path, body, { baseURL })
           .then(({ data }) => data)
           .catch(handleError);
     }
