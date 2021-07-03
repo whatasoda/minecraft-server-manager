@@ -1,4 +1,4 @@
-import fs from 'fs-extra';
+import fs from 'fs';
 import { BUCKET_NAME, MCS_TOKEN_SECRET, METADATA, PROJECT_ID } from './constants';
 import { mcsdir } from '../shared/workdir';
 
@@ -61,9 +61,9 @@ export default async function createInstanceConfig({
 
 // TODO: store them as a JSON on build time
 export const startupScript = async () => {
-  return await fs.readFile(mcsdir('startup.sh'), 'utf-8');
+  return await fs.promises.readFile(mcsdir('startup.sh'), 'utf-8');
 };
 
 const shutdownScript = async () => {
-  return await fs.readFile(mcsdir('shutdown.sh'), 'utf-8');
+  return await fs.promises.readFile(mcsdir('shutdown.sh'), 'utf-8');
 };
