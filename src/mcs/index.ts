@@ -58,6 +58,6 @@ createRequestHandlers<McsHandlers>({
   }
 });
 
-app.listen(8000, 'localhost', () => {
+app.listen(8000, () => {
   console.log('Agent server running at localhost:8000');
 });

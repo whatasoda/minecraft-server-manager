@@ -10,6 +10,7 @@ GS_SOURCE_DATAPACKS_DIR=$(GS_SOURCE_DIR)/world/datapacks
 
 SERVER_DIR=./minecraft
 SERVER_JAR=$(SERVER_DIR)/server.jar
+EULA=$(SERVER_DIR)/eula.txt
 DATAPACKS_DIR=$(SERVER_DIR)/world/datapacks
 
 SERVER_STATUS_JS=./repo/src/mcs/server-status.js
@@ -57,7 +58,7 @@ load-server: assert-server-stopped
 		gsutil -m cp -r "$(GS_SOURCE_DIR)/*" "$(SERVER_DIR)/"
 	else
 		curl -fsSL $(SERVER_JAR_URL) > $(SERVER_JAR)
-		echo -e "# $$(date '+%c (UTC%z)')\neula=true" > eula.txt
+		echo -e "# $$(date '+%c (UTC%z)')\neula=true" > $(EULA)
 	fi
 
 .PHONY: load-datapacks
