@@ -22,7 +22,7 @@ export interface McsHandlers {
     },
     ReturnType<typeof sliceLine>,
   ];
-  '/status': [{}, Minecraft.ApplicationStatus];
+  '/status': [{ instance: string }, Minecraft.ApplicationStatus];
   '/make': [
     {
       instance: string;
@@ -50,6 +50,7 @@ createRequestHandlers<McsHandlers>({
 }).forEach((endpoint) => {
   switch (endpoint.path) {
     case '/log':
+    case '/status':
       app.get(endpoint.path, endpoint.factory(defaultAdapter));
       break;
     case '/make':

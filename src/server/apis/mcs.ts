@@ -83,7 +83,7 @@ createRequestHandlers<McsHandlers>({
     const machine = await getInstanceInfo(compute, instance);
     const baseUrl = await resolveMcsBaseUrl(instance, () => Promise.resolve(machine)).catch(() => null);
     if (baseUrl) {
-      const appStatus = await McsApiClient.status({}, baseUrl);
+      const appStatus = await McsApiClient.status({ instance }, baseUrl);
       if (appStatus.error === null) {
         return { machine, application: appStatus.data };
       }

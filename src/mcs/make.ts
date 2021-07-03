@@ -10,7 +10,7 @@ const createMakeFunc = <T extends string, U>(
       const argv = Object.entries(params)
         .map(([key, value]) => `${key}=${value}`)
         .join(' ');
-      const cp = child_process.exec(`make ${target} ${argv}`, { cwd: workdir() });
+      const cp = child_process.exec(`make --no-print-directory ${target} ${argv}`, { cwd: workdir() });
       return handleChildProcess(cp);
     } else {
       throw new Error(`No valid make target specified: '${target}'`);

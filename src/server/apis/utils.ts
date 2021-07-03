@@ -1,6 +1,7 @@
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import type { Request } from 'express-serve-static-core';
 import Compute from '@google-cloud/compute';
+import querystring from 'querystring';
 import { McsHandlers } from '../../mcs';
 import createApiClient from '../../shared/apiClientFactory';
 import { createMcsAuthHeaders } from '../../shared/mcs-token';
@@ -28,7 +29,7 @@ export const resolveMcsBaseUrl = async (instance: string, getInfo: () => Promise
 
 export const McsApiClient = createApiClient<McsHandlers>({}, (client) => {
   client.interceptors.request.use((req) => {
-    const { instance } = (req.params || req.data) as { instance?: string };
+    const { instance } = { ...req.data, ...req.params } as { instance?: string };
     if (!instance) return req;
 
     const authHeaders = createMcsAuthHeaders(mcsHostname(instance), MCS_TOKEN_SECRET);
@@ -44,8 +45,8 @@ export const createMcsProxy = (path: string) => {
   return createProxyMiddleware({
     pathRewrite: () => path,
     router: async (req) => {
-      const { instance } = req.body || req.query;
-      const baseUrl = await resolveMcsBaseUrl(instance, () => {
+      const { instance } = { ...req.body, ...req.query } as { instance?: string };
+      const baseUrl = await resolveMcsBaseUrl(instance!, () => {
         const compute = createCompute(req)!;
         return getInstanceInfo(compute, instance!);
       });
@@ -57,13 +58,28 @@ export const createMcsProxy = (path: string) => {
       return baseUrl;
     },
     onProxyReq: (proxyReq, req) => {
-      const { instance } = req.body || req.query;
+      const { instance } = { ...req.body, ...req.query } as { instance?: string };
       const hostname = `${instance}.${METADATA.ZONE}.c.${PROJECT_ID}.internal`;
       const authHeaders = createMcsAuthHeaders(hostname, MCS_TOKEN_SECRET);
 
       Object.entries(authHeaders).forEach(([name, value]) => {
         proxyReq.setHeader(name, value);
       });
+
+      if (req.body) {
+        // https://github.com/chimurai/http-proxy-middleware/issues/320#issuecomment-474922392
+        const contentType = proxyReq.getHeader('Content-Type') as string;
+        const writeBody = (bodyData: string) => {
+          proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+          proxyReq.write(bodyData);
+        };
+        if (contentType.includes('application/json')) {
+          writeBody(JSON.stringify(req.body));
+        }
+        if (contentType.includes('application/x-www-form-urlencoded')) {
+          writeBody(querystring.stringify(req.body));
+        }
+      }
     },
   });
 };
