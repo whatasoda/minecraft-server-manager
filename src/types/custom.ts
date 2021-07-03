@@ -1,3 +1,5 @@
+import type { StatusResponse } from 'minecraft-server-util/dist/model/StatusResponse';
+
 declare global {
   // https://stackoverflow.com/questions/50374908/transform-union-type-to-intersection-type#answer-50375286
   type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never;
@@ -38,6 +40,14 @@ declare global {
       globalIP?: string;
       diskSize: string;
       javaMemorySize: string;
+    }
+
+    export interface ApplicationStatus {
+      description: string | null;
+      version: StatusResponse['version'];
+      modInfo: StatusResponse['modInfo'];
+      maxPlayers: StatusResponse['maxPlayers'];
+      onlinePlayers: StatusResponse['onlinePlayers'];
     }
 
     export interface MachineType {

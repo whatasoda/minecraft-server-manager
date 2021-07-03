@@ -1,6 +1,4 @@
 import express from 'express';
-import { createProxyMiddleware } from 'http-proxy-middleware';
-import type { Request, ParamsDictionary } from 'express-serve-static-core';
 import { withAuth } from './auth';
 import {
   createInstance,
@@ -11,21 +9,11 @@ import {
   stopInstance,
 } from '../services/compute';
 import { defaultAdapter } from '../../shared/defaultRequestAdapter';
-import { MCS_PORT, MCS_TOKEN_SECRET, METADATA, PROJECT_ID } from '../constants';
-import { createMcsAuthHeaders } from '../../shared/mcs-token';
 import createRequestHandlers from '../../shared/requestHandlerFactory';
-import Compute from '@google-cloud/compute';
+import { createCompute, createMcsProxy, McsApiClient, resolveMcsBaseUrl } from './utils';
 
 const mcs = express().use(withAuth());
 export default mcs;
-
-const createCompute = (req: Request) => {
-  if (req.authClient) {
-    return new Compute({ projectId: PROJECT_ID, authClient: req.authClient });
-  } else {
-    return null;
-  }
-};
 
 export interface McsHandlers {
   '/list': [
@@ -49,7 +37,13 @@ export interface McsHandlers {
   '/start': [{ instance: string }, {}];
   '/stop': [{ instance: string }, {}];
   '/delete': [{ instance: string }, {}];
-  '/status': [{ instance: string }, Minecraft.MachineInfo];
+  '/status': [
+    { instance: string },
+    {
+      machine: Minecraft.MachineInfo;
+      application: Minecraft.ApplicationStatus | null;
+    },
+  ];
 }
 
 createRequestHandlers<McsHandlers>({
@@ -86,11 +80,15 @@ createRequestHandlers<McsHandlers>({
   '/status': async (body, req) => {
     const { instance } = body;
     const compute = createCompute(req)!;
-    const data = await getInstanceInfo(compute, instance);
-    // try {
-    //   const origin = await resolveMcsOrigin(instance, () => Promise.resolve(data));
-    // } catch (e) {}
-    return data;
+    const machine = await getInstanceInfo(compute, instance);
+    const baseUrl = await resolveMcsBaseUrl(instance, () => Promise.resolve(machine)).catch(() => null);
+    if (baseUrl) {
+      const appStatus = await McsApiClient.status({}, baseUrl);
+      if (appStatus.error === null) {
+        return { machine, application: appStatus.data };
+      }
+    }
+    return { machine, application: null };
   },
 }).forEach((endpoint) => {
   switch (endpoint.path) {
@@ -109,69 +107,22 @@ createRequestHandlers<McsHandlers>({
   }
 });
 
-const resolveMcsOrigin = async (instance: string, getInfo: () => Promise<Minecraft.MachineInfo>) => {
-  const hostname = `${instance}.${METADATA.ZONE}.c.${PROJECT_ID}.internal`;
-  if (process.env.NODE_ENV === 'production') {
-    return `http://${hostname}:${MCS_PORT}`;
-  } else {
-    const { globalIP } = await getInfo();
-    return globalIP ? `http://${globalIP}:${MCS_PORT}` : null;
-  }
-};
-
 interface McsProxyConfig {
   path: string;
-  pathRewrite: (params: ParamsDictionary) => string;
 }
 
 const PROXIES: McsProxyConfig[] = [
   {
     path: '/log',
-    pathRewrite: () => `/log`,
-  },
-  {
-    path: '/status',
-    pathRewrite: () => `/status`,
   },
   {
     path: '/make',
-    pathRewrite: () => `/make`,
   },
 ];
 
-PROXIES.forEach(({ path, pathRewrite }) => {
-  mcs.use(
-    path,
-    createProxyMiddleware({
-      pathRewrite: (_, req) => {
-        return pathRewrite(req.params);
-      },
-      router: async (req) => {
-        const { instance } = req.params.instance || req.body.instance;
-        const origin = await resolveMcsOrigin(instance, () => {
-          const compute = createCompute(req)!;
-          return getInstanceInfo(compute, instance!);
-        });
-        if (!origin) {
-          // eslint-disable-next-line no-console
-          console.log('Target instance inactive: skipped proxy');
-          throw {};
-        }
-        return origin;
-      },
-      onProxyReq: (proxyReq, req) => {
-        const { instance } = req.params;
-        const hostname = `${instance}.${METADATA.ZONE}.c.${PROJECT_ID}.internal`;
-        const authHeaders = createMcsAuthHeaders(hostname, MCS_TOKEN_SECRET);
-
-        Object.entries(authHeaders).forEach(([name, value]) => {
-          proxyReq.setHeader(name, value);
-        });
-      },
-    }),
-    (_, res) => {
-      // TODO: return json response, perhaps status code should be changed
-      res.status(404).send();
-    },
-  );
+PROXIES.forEach(({ path }) => {
+  mcs.use(path, createMcsProxy(path), (_, res) => {
+    // TODO: return json response, perhaps status code should be changed
+    res.status(404).send();
+  });
 });

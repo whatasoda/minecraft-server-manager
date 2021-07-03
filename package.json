@@ -30,6 +30,7 @@
       "@google-cloud/common": true,
       "@google-cloud/compute": true,
       "@google-cloud/storage": true,
+      "axios": true,
       "express": true,
       "express-session": true,
       "google-auth-library": true,

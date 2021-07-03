@@ -1,10 +1,13 @@
-import axios, { AxiosError, AxiosInstance } from 'axios';
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import type ResponseResult from './responseResult';
 
 type Method = 'get' | 'post';
 type Fetch<Req, Res> = (body: Req, baseURL?: string) => Promise<ResponseResult.Result<Res>>;
 
-export default function createApiClient<T extends {}>(baseURL: string) {
+export default function createApiClient<T extends {}>(
+  config: AxiosRequestConfig,
+  configureClient?: (client: AxiosInstance) => void,
+) {
   type Target = [path: Extract<keyof T, string>, method: Method];
   type RequestFunc<V extends Target> = T[V[0]] extends [infer Req, infer Res] ? Fetch<Req, Res> : never;
   interface TargetMap {
@@ -12,8 +15,8 @@ export default function createApiClient<T extends {}>(baseURL: string) {
   }
 
   const client = axios.create({
-    baseURL,
-    transformResponse: (data: string) => {
+    ...config,
+    transformResponse: (data) => {
       if (typeof data === 'string') {
         try {
           return JSON.parse(data);
@@ -22,6 +25,7 @@ export default function createApiClient<T extends {}>(baseURL: string) {
       return data;
     },
   });
+  configureClient?.(client);
 
   return function makeAlias<U extends TargetMap>(pathMap: U) {
     const entries = Object.entries(pathMap) as [string, Target][];
