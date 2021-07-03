@@ -39,12 +39,7 @@ assert-server-started:
 
 .PHONY: server-status
 server-status:
-	@
-	key=data
-	if ! data=$$(node $(SERVER_STATUS_JS) 2>&1); then
-		key=error
-	fi
-	echo $$data | jq "{ $$key: . }"
+	@node $(SERVER_STATUS_JS)
 
 .PHONY: load-server
 load-server: assert-server-stopped

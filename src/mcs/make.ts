@@ -36,4 +36,24 @@ export const makeDispatch = async (...args: MakeArgs) => {
   });
 };
 
-export const makeQuery = async () => {};
+const queryTargets = ['server-status'];
+export const makeQuery = async <T>(...args: MakeArgs) => {
+  const cp = make(queryTargets, ...args);
+  let data = '';
+  cp.stdout?.on('data', (chunk: string) => {
+    data += chunk;
+  });
+  return new Promise<T>((resolve, reject) => {
+    cp.on('close', (code) => {
+      if (code === 0) {
+        try {
+          resolve(JSON.parse(data));
+        } catch (e) {
+          reject(new Error('query failed with unknown reason'));
+        }
+      } else {
+        reject(new Error(`Process exited with non-zero code: ${code}`));
+      }
+    });
+  });
+};

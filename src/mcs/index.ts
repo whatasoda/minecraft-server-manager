@@ -2,7 +2,7 @@
 import express from 'express';
 import fs from 'fs';
 import withMcsAuth from './mcs-auth';
-import { makeDispatch } from './make';
+import { makeDispatch, makeQuery } from './make';
 import createRequestHandlers from '../shared/requestHandlerFactory';
 import { defaultAdapter } from '../shared/defaultRequestAdapter';
 import sliceLine from './slice-line';
@@ -22,7 +22,7 @@ export interface McsHandlers {
     },
     ReturnType<typeof sliceLine>,
   ];
-  '/status': [{}, {}];
+  '/status': [{}, Minecraft.ApplicationStatus];
   '/make': [
     {
       instance: string;
@@ -40,7 +40,7 @@ createRequestHandlers<McsHandlers>({
     return sliceLine(raw, stride, cursor);
   },
   '/status': async () => {
-    return {};
+    return makeQuery<Minecraft.ApplicationStatus>('server-status');
   },
   '/make': async (body) => {
     const { target, params } = body;
