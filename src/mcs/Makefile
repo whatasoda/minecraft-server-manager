@@ -116,7 +116,7 @@ define screen-start
 		false; \
 	else \
 		screen -p 0 -L -Logfile make-$(1).log -dmS make-$(1) $(MAKE) sc.$(1); \
-		$(call screen-execute,minecraft,colon "logfile flush 0^M"); \
+		$(call screen-execute,$(1),colon "logfile flush 0^M"); \
 		true; \
 	fi
 endef
@@ -144,7 +144,9 @@ start-agent:
 
 .PHONY: stop-agent
 stop-agent:
-	@$(call screen-execute,agent,kill) || true
+	@
+	$(call screen-execute,test,stuff "^C") || true
+	$(call screen-execute,agent,kill) || true
 
 .PHONY: sc.agent
 sc.agent:
