@@ -10,9 +10,13 @@ import {
 } from '../services/compute';
 import { defaultAdapter } from '../../shared/defaultRequestAdapter';
 import createRequestHandlers from '../../shared/requestHandlerFactory';
-import { createCompute, createMcsProxy, McsApiClient, resolveMcsBaseUrl } from './utils';
+import { createMcsProxy, McsApiClient, resolveMcsBaseUrl } from './utils';
+import { initComputeContext } from '../service-adapters/compute';
 
-const mcs = express().use(withAuth());
+const mcs = express().use(withAuth(), (req, _, next) => {
+  initComputeContext(req);
+  next();
+});
 export default mcs;
 
 export interface McsHandlers {
@@ -49,38 +53,32 @@ export interface McsHandlers {
 createRequestHandlers<McsHandlers>({
   '/list': async ({ body, req }) => {
     const { pageToken } = body;
-    const compute = createCompute(req)!;
-    const data = await listInstances(compute, pageToken);
+    const data = await listInstances(req, pageToken);
     return data;
   },
   '/create': async ({ body, req }) => {
     const { name, machineType, diskSizeGb, javaMemorySizeGb } = body;
-    const compute = createCompute(req)!;
-    const data = await createInstance(compute, name, { machineType, diskSizeGb, javaMemorySizeGb });
+    const data = await createInstance(req, name, { machineType, diskSizeGb, javaMemorySizeGb });
     return data;
   },
   '/start': async ({ body, req }) => {
     const { instance } = body;
-    const compute = createCompute(req)!;
-    const data = await startInstance(compute, instance);
+    const data = await startInstance(req, instance);
     return data;
   },
   '/stop': async ({ body, req }) => {
     const { instance } = body;
-    const compute = createCompute(req)!;
-    const data = await stopInstance(compute, instance);
+    const data = await stopInstance(req, instance);
     return data;
   },
   '/delete': async ({ body, req }) => {
     const { instance } = body;
-    const compute = createCompute(req)!;
-    const data = await deleteInstance(compute, instance);
+    const data = await deleteInstance(req, instance);
     return data;
   },
   '/status': async ({ body, req }) => {
     const { instance } = body;
-    const compute = createCompute(req)!;
-    const machine = await getInstanceInfo(compute, instance);
+    const machine = await getInstanceInfo(req, instance);
     const baseUrl = await resolveMcsBaseUrl(instance, () => Promise.resolve(machine)).catch(() => null);
     if (baseUrl) {
       const appStatus = await McsApiClient.status({ instance }, baseUrl);

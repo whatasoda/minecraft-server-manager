@@ -7,6 +7,7 @@ import createApiClient from '../../shared/apiClientFactory';
 import { createMcsAuthHeaders } from '../../shared/mcs-token';
 import { MCS_PORT, MCS_TOKEN_SECRET, METADATA, PROJECT_ID } from '../constants';
 import { getInstanceInfo } from '../services/compute';
+import { initComputeContext } from '../service-adapters/compute';
 
 export const createCompute = (req: Request) => {
   if (req.authClient) {
@@ -45,11 +46,9 @@ export const createMcsProxy = (path: string) => {
   return createProxyMiddleware({
     pathRewrite: () => path,
     router: async (req) => {
+      initComputeContext(req);
       const { instance } = { ...req.body, ...req.query } as { instance?: string };
-      const baseUrl = await resolveMcsBaseUrl(instance!, () => {
-        const compute = createCompute(req)!;
-        return getInstanceInfo(compute, instance!);
-      });
+      const baseUrl = await resolveMcsBaseUrl(instance!, () => getInstanceInfo(req, instance!));
       if (!baseUrl) {
         // eslint-disable-next-line no-console
         console.log('Target instance inactive: skipped proxy');

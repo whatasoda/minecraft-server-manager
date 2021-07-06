@@ -1,11 +1,11 @@
-import Compute, { Operation, VM } from '@google-cloud/compute';
-import { METADATA } from '../constants';
+import type { Request } from 'express-serve-static-core';
+import * as computeAdapter from '../service-adapters/compute';
 import createInstanceConfig from '../instance-config';
 
 type InstanceInfo = Minecraft.MachineInfo;
 type InstanceConfig = Omit<Minecraft.MachineConfig, 'name'>;
 
-const extractInstanceInfo = ({ metadata: vm }: VM): InstanceInfo => {
+const extractInstanceInfo = ({ metadata: vm }: { metadata: any }): InstanceInfo => {
   const {
     name,
     machineType,
@@ -31,58 +31,43 @@ const extractInstanceInfo = ({ metadata: vm }: VM): InstanceInfo => {
 };
 
 export const listInstances = async (
-  compute: Compute,
+  req: Request,
   pageToken: string | undefined,
 ): Promise<{
   instances: InstanceInfo[];
   nextQuery: string | undefined;
 }> => {
-  const zone = compute.zone(METADATA.ZONE);
-  const [vms, nextQuery] = await zone.getVMs({ pageToken });
+  const { vms, nextQuery } = await computeAdapter.listInstances(req, pageToken);
   const instances = vms.map((vm) => extractInstanceInfo(vm));
   return { instances, nextQuery };
 };
 
-export const getInstanceInfo = async (compute: Compute, vmName: string): Promise<InstanceInfo> => {
-  const zone = compute.zone(METADATA.ZONE);
-  const vm = zone.vm(vmName);
-  const [res] = await vm.get();
+export const getInstanceInfo = async (req: Request, vmName: string): Promise<InstanceInfo> => {
+  const res = await computeAdapter.getInstance(req, vmName);
   return extractInstanceInfo(res);
 };
 
-export const startInstance = async (compute: Compute, vmName: string): Promise<{ message: string }> => {
-  const zone = compute.zone(METADATA.ZONE);
-  const vm = zone.vm(vmName);
-  const [operation] = await vm.start();
-  await operation.promise();
+export const startInstance = async (req: Request, vmName: string): Promise<{ message: string }> => {
+  await computeAdapter.startInstance(req, vmName);
   return { message: 'success' };
 };
 
-export const stopInstance = async (compute: Compute, vmName: string): Promise<{ message: string }> => {
-  const zone = compute.zone(METADATA.ZONE);
-  const vm = zone.vm(vmName);
-  const [operation] = await vm.stop();
-  await operation.promise();
+export const stopInstance = async (req: Request, vmName: string): Promise<{ message: string }> => {
+  await computeAdapter.stopInstance(req, vmName);
+  return { message: 'success' };
+};
+
+export const deleteInstance = async (req: Request, vmName: string): Promise<{ message: string }> => {
+  await computeAdapter.deleteInstance(req, vmName);
   return { message: 'success' };
 };
 
 export const createInstance = async (
-  compute: Compute,
+  req: Request,
   vmName: string,
   config: InstanceConfig,
 ): Promise<{ message: string }> => {
-  const zone = compute.zone(METADATA.ZONE);
-  const vm = zone.vm(vmName);
   const instanceConfig = await createInstanceConfig(config);
-  const [, operation] = (await vm.create(instanceConfig)) as [VM, Operation];
-  await operation.promise();
-  return { message: 'success' };
-};
-
-export const deleteInstance = async (compute: Compute, vmName: string): Promise<{ message: string }> => {
-  const zone = compute.zone(METADATA.ZONE);
-  const vm = zone.vm(vmName);
-  const [operation] = (await vm.delete()) as unknown as [Operation, {}];
-  await operation.promise();
+  await computeAdapter.createInstance(req, vmName, instanceConfig);
   return { message: 'success' };
 };
