@@ -1,15 +1,26 @@
+import { EventEmitter } from 'events';
 import type { RequestHandler } from 'express';
 import type { Request, Response } from 'express-serve-static-core';
+import { v4 as uuid } from 'uuid';
 
 type Body = Record<string, any>;
 
 export interface RequestHandlerAdapter {
-  resolveRequest: (req: Request) => { body: {} };
+  resolveRequest: (req: Request, requestId: string) => { body: {} };
   resolveResponse: (res: Response, data: JsonResponse | ErrorResponse | ResolvedResponse) => void;
 }
 
-export interface HandlerDefinition<Req extends Body, Res extends Body> {
-  (body: Req, req: Request, send: (handler: (res: Response) => Promise<void>) => Promise<never>): Promise<Res>;
+interface RequestContext<B extends Body> {
+  requestId: string;
+  body: B;
+  req: Request;
+  res: Response;
+  interrupt: (promise: Promise<void>) => Promise<never>;
+  on: (type: 'close', callback: () => void) => void;
+}
+
+export interface HandlerDefinition<B extends Body, P extends Body> {
+  (context: RequestContext<B>): Promise<P>;
 }
 
 export interface RequestHandlerFactory {
@@ -27,26 +38,37 @@ export class ErrorResponse extends Error {
 }
 export class ResolvedResponse {}
 
-export function createRequestHandler<Req extends Body, Res extends Body>(
-  handler: HandlerDefinition<Req, Res>,
+export function createRequestHandler<B extends Body, P extends Body>(
+  handler: HandlerDefinition<B, P>,
 ): RequestHandlerFactory {
   return function factory(adapter: RequestHandlerAdapter): RequestHandler {
     const { resolveRequest, resolveResponse } = adapter;
     return async function handleRequest(req, res) {
-      const { body } = resolveRequest(req);
-      const send = async (handler: (res: Response) => Promise<void>): Promise<never> => {
-        try {
-          await handler(res);
-        } catch (e) {
-          // TODO: check if the response is really resolved. If not, throw ErrorRepsonse
-        }
-        throw new ResolvedResponse();
+      const requestId = uuid();
+      const emitter = new EventEmitter();
+      const context: RequestContext<B> = {
+        ...(resolveRequest(req, requestId) as { body: B }),
+        requestId,
+        req,
+        res,
+        interrupt: async (promise) => {
+          await promise.catch(() => {
+            // TODO: check if the response is really resolved. If not, throw ErrorRepsonse
+          });
+          throw new ResolvedResponse();
+        },
+        on: (type, callback) => {
+          emitter.on(type, callback);
+        },
       };
-      return resolveResponse(res, await handle());
+
+      await resolveResponse(res, await handle());
+      emitter.emit('close');
+      return;
 
       async function handle(): Promise<JsonResponse | ErrorResponse | ResolvedResponse> {
         try {
-          const data = await handler(body as Req, req, send);
+          const data = await handler(context);
           return new JsonResponse(data);
         } catch (err) {
           if (err instanceof ResolvedResponse) {

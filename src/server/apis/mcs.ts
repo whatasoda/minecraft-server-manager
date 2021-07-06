@@ -47,37 +47,37 @@ export interface McsHandlers {
 }
 
 createRequestHandlers<McsHandlers>({
-  '/list': async (body, req) => {
+  '/list': async ({ body, req }) => {
     const { pageToken } = body;
     const compute = createCompute(req)!;
     const data = await listInstances(compute, pageToken);
     return data;
   },
-  '/create': async (body, req) => {
+  '/create': async ({ body, req }) => {
     const { name, machineType, diskSizeGb, javaMemorySizeGb } = body;
     const compute = createCompute(req)!;
     const data = await createInstance(compute, name, { machineType, diskSizeGb, javaMemorySizeGb });
     return data;
   },
-  '/start': async (body, req) => {
+  '/start': async ({ body, req }) => {
     const { instance } = body;
     const compute = createCompute(req)!;
     const data = await startInstance(compute, instance);
     return data;
   },
-  '/stop': async (body, req) => {
+  '/stop': async ({ body, req }) => {
     const { instance } = body;
     const compute = createCompute(req)!;
     const data = await stopInstance(compute, instance);
     return data;
   },
-  '/delete': async (body, req) => {
+  '/delete': async ({ body, req }) => {
     const { instance } = body;
     const compute = createCompute(req)!;
     const data = await deleteInstance(compute, instance);
     return data;
   },
-  '/status': async (body, req) => {
+  '/status': async ({ body, req }) => {
     const { instance } = body;
     const compute = createCompute(req)!;
     const machine = await getInstanceInfo(compute, instance);

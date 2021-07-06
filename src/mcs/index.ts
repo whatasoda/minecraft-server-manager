@@ -34,7 +34,7 @@ export interface McsHandlers {
 }
 
 createRequestHandlers<McsHandlers>({
-  '/log': async (body) => {
+  '/log': async ({ body }) => {
     const { target, stride, cursor } = body;
     const raw = await fs.promises.readFile(`make-${target}.log`, 'utf-8');
     return sliceLine(raw, stride, cursor);
@@ -42,7 +42,7 @@ createRequestHandlers<McsHandlers>({
   '/status': async () => {
     return (await makeQuery('server-status')) as Minecraft.ApplicationStatus;
   },
-  '/make': async (body) => {
+  '/make': async ({ body }) => {
     const { target, params } = body;
     await makeDispatch(target, params);
     return {};
