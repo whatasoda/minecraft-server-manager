@@ -1,25 +1,30 @@
 import fs from 'fs';
+import type { protos } from '@google-cloud/compute';
 import { BUCKET_NAME, MCS_TOKEN_SECRET, METADATA, PROJECT_ID } from './constants';
 import { mcsdir } from '../shared/workdir';
 
-type InstanceConfig = Omit<Minecraft.MachineConfig, 'name'>;
+type InstanceConfig = Minecraft.MachineConfig;
+
+const commonTags = ['minecraft-server'];
+const prodTags = [...commonTags];
+const devTags = [...commonTags, 'minecraft-server-dev'];
 
 // https://cloud.google.com/compute/docs/reference/rest/v1/instances
 export default async function createInstanceConfig({
+  name,
   machineType = 'n2-standard-4',
   diskSizeGb = 100,
   javaMemorySizeGb = 10,
-}: InstanceConfig) {
+}: InstanceConfig): Promise<protos.google.cloud.compute.v1.IInstance> {
   const { ZONE } = METADATA;
   diskSizeGb = Math.floor(Math.max(10, diskSizeGb));
   javaMemorySizeGb = Math.floor(Math.max(2, javaMemorySizeGb));
 
   return {
+    name,
     machineType: `zones/${ZONE}/machineTypes/${machineType}`,
     tags: {
-      items: ['minecraft-server', process.env.NODE_ENV !== 'production' ? 'minecraft-server-dev' : null].filter(
-        Boolean,
-      ),
+      items: process.env.NODE_ENV === 'production' ? prodTags : devTags,
     },
     networkInterfaces: [
       {
@@ -46,7 +51,7 @@ export default async function createInstanceConfig({
         { key: 'shutdown-script', value: await shutdownScript() },
         { key: 'bucket-name', value: BUCKET_NAME },
         { key: 'mcs-token-secret', value: MCS_TOKEN_SECRET },
-        { key: 'java-memory-size', value: javaMemorySizeGb },
+        { key: 'java-memory-size', value: `${javaMemorySizeGb}` },
       ],
     },
     serviceAccounts: [

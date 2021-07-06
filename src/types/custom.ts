@@ -1,3 +1,4 @@
+import type { protos } from '@google-cloud/compute';
 import type { StatusResponse } from 'minecraft-server-util/dist/model/StatusResponse';
 
 declare global {
@@ -34,10 +35,10 @@ declare global {
 
     export interface MachineInfo {
       name: string;
-      status: Minecraft.MachineStatus;
+      status: NonNullable<protos.google.cloud.compute.v1.IInstance['status']>;
       machineType: string;
       localIP: string;
-      globalIP?: string;
+      globalIP: string | null;
       diskSize: string;
       javaMemorySize: string;
     }

@@ -1,6 +1,4 @@
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import type { Request } from 'express-serve-static-core';
-import Compute from '@google-cloud/compute';
 import querystring from 'querystring';
 import { McsHandlers } from '../../mcs';
 import createApiClient from '../../shared/apiClientFactory';
@@ -9,17 +7,9 @@ import { MCS_PORT, MCS_TOKEN_SECRET, METADATA, PROJECT_ID } from '../constants';
 import { getInstanceInfo } from '../services/compute';
 import { initComputeContext } from '../service-adapters/compute';
 
-export const createCompute = (req: Request) => {
-  if (req.authClient) {
-    return new Compute({ projectId: PROJECT_ID, authClient: req.authClient });
-  } else {
-    return null;
-  }
-};
-
 export const mcsHostname = (instance: string) => `${instance}.${METADATA.ZONE}.c.${PROJECT_ID}.internal`;
 
-export const resolveMcsBaseUrl = async (instance: string, getInfo: () => Promise<{ globalIP?: string }>) => {
+export const resolveMcsBaseUrl = async (instance: string, getInfo: () => Promise<{ globalIP: string | null }>) => {
   if (process.env.NODE_ENV === 'production') {
     return `http://${mcsHostname(instance)}:${MCS_PORT}`;
   } else {

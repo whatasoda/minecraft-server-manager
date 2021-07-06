@@ -26,7 +26,7 @@ export interface McsHandlers {
     },
     {
       instances: Minecraft.MachineInfo[];
-      nextQuery: string | undefined;
+      nextPageToken: string | undefined;
     },
   ];
   '/create': [
@@ -58,7 +58,7 @@ createRequestHandlers<McsHandlers>({
   },
   '/create': async ({ body, req }) => {
     const { name, machineType, diskSizeGb, javaMemorySizeGb } = body;
-    const data = await createInstance(req, name, { machineType, diskSizeGb, javaMemorySizeGb });
+    const data = await createInstance(req, { name, machineType, diskSizeGb, javaMemorySizeGb });
     return data;
   },
   '/start': async ({ body, req }) => {

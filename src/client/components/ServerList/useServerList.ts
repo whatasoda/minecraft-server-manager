@@ -11,8 +11,8 @@ export default function useServerList() {
     const prevToken = pageToken.current;
     const result = await mcs.list({ pageToken: prevToken });
     if (result.error === null) {
-      const { instances, nextQuery } = result.data;
-      pageToken.current = nextQuery;
+      const { instances, nextPageToken } = result.data;
+      pageToken.current = nextPageToken;
       setList((curr) => {
         return prevToken ? [...curr, ...instances] : [...instances];
       });
