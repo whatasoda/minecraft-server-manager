@@ -1,6 +1,8 @@
-import type { Request } from 'express-serve-static-core';
 import { InstancesClient, ZoneOperationsClient, protos } from '@google-cloud/compute';
 import { METADATA, PROJECT_ID } from '../constants';
+import { GoogleAuth } from 'google-auth-library';
+
+export type ContextKey = { authClient?: GoogleAuth };
 
 interface ComputeContext {
   common: { zone: string; project: string };
@@ -8,59 +10,65 @@ interface ComputeContext {
   operations: ZoneOperationsClient;
 }
 
-const computeContextMap = new WeakMap<{}, ComputeContext>();
+const computeContextMap = new WeakMap<ContextKey, ComputeContext>();
 
-export const initComputeContext = (req: Request) => {
-  if (computeContextMap.has(req)) return;
-  const { authClient } = req;
+export const initComputeContext = (key: ContextKey) => {
+  if (computeContextMap.has(key)) return;
+  const { authClient } = key;
   if (authClient) {
     const common = { zone: METADATA.ZONE, project: PROJECT_ID };
     const instances = new InstancesClient({ authClient, fallback: 'rest' });
     const operations = new ZoneOperationsClient({ authClient, fallback: 'rest' });
-    computeContextMap.set(req, { common, instances, operations });
+    computeContextMap.set(key, { common, instances, operations });
   }
 };
 
-const getComputeContext = (req: Request) => {
-  const context = computeContextMap.get(req);
+const getComputeContext = (key: ContextKey) => {
+  const context = computeContextMap.get(key);
   if (!context) {
     throw new Error('No compute context found');
   }
   return context;
 };
 
-export const listInstances = async (req: Request, pageToken: string | undefined) => {
-  const { instances, common } = getComputeContext(req);
-  const [{ items, nextPageToken }] = await instances.list({ ...common, project: PROJECT_ID, pageToken });
-  return { items: items ?? [], nextPageToken };
+export const listInstances = async (key: ContextKey, pageToken: string | undefined) => {
+  const { instances, common } = getComputeContext(key);
+  const [data] = await instances.list({ ...common, project: PROJECT_ID, pageToken });
+  return data;
 };
 
-export const getInstance = async (req: Request, instance: string) => {
-  const { instances, common } = getComputeContext(req);
-  const [item] = await instances.get({ ...common, instance });
-  return item;
+export const getInstance = async (key: ContextKey, instance: string) => {
+  const { instances, common } = getComputeContext(key);
+  const [data] = await instances.get({ ...common, instance });
+  return data;
 };
 
-export const startInstance = async (req: Request, instance: string) => {
-  const { instances, operations, common } = getComputeContext(req);
+export const getOperation = async (key: ContextKey, operation: string) => {
+  const { operations, common } = getComputeContext(key);
+  const [data] = await operations.get({ ...common, operation });
+  return data;
+};
+
+export const startInstance = async (key: ContextKey, instance: string) => {
+  const { instances, common } = getComputeContext(key);
   const [operation] = await instances.start({ ...common, instance });
-  await operations.wait({ ...common, operation: operation.id });
+  return operation;
 };
 
-export const stopInstance = async (req: Request, instance: string) => {
-  const { instances, operations, common } = getComputeContext(req);
+export const stopInstance = async (key: ContextKey, instance: string) => {
+  const { instances, common } = getComputeContext(key);
   const [operation] = await instances.stop({ ...common, instance });
-  await operations.wait({ ...common, operation: operation.id });
+  return operation;
 };
 
-export const deleteInstance = async (req: Request, instance: string) => {
-  const { instances, operations, common } = getComputeContext(req);
+export const deleteInstance = async (key: ContextKey, instance: string) => {
+  const { instances, common } = getComputeContext(key);
   const [operation] = await instances.delete({ ...common, instance });
-  await operations.wait({ ...common, operation: operation.id });
+  return operation;
 };
 
-export const insertInstance = async (req: Request, instanceResource: protos.google.cloud.compute.v1.IInstance) => {
-  const { instances, operations, common } = getComputeContext(req);
+export const insertInstance = async (key: ContextKey, instanceResource: protos.google.cloud.compute.v1.IInstance) => {
+  const { instances, common } = getComputeContext(key);
   const [operation] = await instances.insert({ ...common, instanceResource });
-  await operations.wait({ ...common, operation: operation.id });
+  return operation;
 };

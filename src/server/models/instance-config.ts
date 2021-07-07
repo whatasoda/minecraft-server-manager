@@ -1,7 +1,7 @@
 import fs from 'fs';
 import type { protos } from '@google-cloud/compute';
-import { BUCKET_NAME, MCS_TOKEN_SECRET, METADATA, PROJECT_ID } from './constants';
-import { mcsdir } from '../shared/workdir';
+import { BUCKET_NAME, MCS_TOKEN_SECRET, METADATA, PROJECT_ID } from '../constants';
+import { mcsdir } from '../../shared/workdir';
 
 type InstanceConfig = Minecraft.MachineConfig;
 

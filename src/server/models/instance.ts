@@ -2,7 +2,7 @@ import { protos } from '@google-cloud/compute';
 
 type InstanceInfo = Minecraft.MachineInfo;
 
-export default function transformInstanceData(instance: protos.google.cloud.compute.v1.IInstance): InstanceInfo {
+export default function transformInstance(instance: protos.google.cloud.compute.v1.IInstance): InstanceInfo {
   const { name, machineType, status, metadata } = instance;
   const [{ networkIP: localIP, accessConfigs }] = instance.networkInterfaces || [];
   const [{ natIP: globalIP }] = accessConfigs || [];
@@ -13,6 +13,8 @@ export default function transformInstanceData(instance: protos.google.cloud.comp
     return acc;
   }, {});
   const { 'java-memory-size': javaMemorySize } = metadataMap || {};
+
+  // TODO: do assertion
 
   return {
     name: name!,
