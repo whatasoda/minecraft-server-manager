@@ -42,3 +42,5 @@ declare global {
     }
   }
 }
+
+export default Meteora;
