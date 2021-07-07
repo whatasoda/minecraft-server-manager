@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import createCoreState from '../../utils/createCoreState';
 
 interface CoreProps {
-  instance: Minecraft.MachineInfo | { name: string; status?: never };
+  instance: Meteora.InstanceInfo | { name: string; status?: never };
 }
 
 export default createCoreState((props: CoreProps) => {

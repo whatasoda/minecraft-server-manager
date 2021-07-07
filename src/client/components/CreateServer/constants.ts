@@ -3,7 +3,7 @@ export const texts = {
   submit: 'Create',
 };
 
-export const machineTypes: Minecraft.MachineType[] = [
+export const machineTypes: Meteora.MachineTypeInfo[] = [
   {
     name: 'n2-standard-2',
     description: '2 vCPUs 8 GB RAM',

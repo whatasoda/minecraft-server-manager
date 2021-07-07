@@ -5,7 +5,7 @@ import ServerListUI from './ui';
 interface ServerListProps {}
 
 export interface ServerListUIProps {
-  servers: Minecraft.MachineInfo[];
+  servers: Meteora.InstanceInfo[];
   mayHaveNextItems: boolean;
   keyPrefix: string;
   refresh: () => void;

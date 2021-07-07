@@ -3,8 +3,6 @@ import type { protos } from '@google-cloud/compute';
 import { BUCKET_NAME, MCS_TOKEN_SECRET, METADATA, PROJECT_ID } from '../constants';
 import { mcsdir } from '../../shared/workdir';
 
-type InstanceConfig = Minecraft.MachineConfig;
-
 const commonTags = ['minecraft-server'];
 const prodTags = [...commonTags];
 const devTags = [...commonTags, 'minecraft-server-dev'];
@@ -15,7 +13,7 @@ export default async function createInstanceConfig({
   machineType = 'n2-standard-4',
   diskSizeGb = 100,
   javaMemorySizeGb = 10,
-}: InstanceConfig): Promise<protos.google.cloud.compute.v1.IInstance> {
+}: Meteora.ServerConfig): Promise<protos.google.cloud.compute.v1.IInstance> {
   const { ZONE } = METADATA;
   diskSizeGb = Math.floor(Math.max(10, diskSizeGb));
   javaMemorySizeGb = Math.floor(Math.max(2, javaMemorySizeGb));

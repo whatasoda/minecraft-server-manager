@@ -66,7 +66,7 @@ const useContainer = containerHook(({ isLoading, isProcessing, setProcessing, se
       setProcessing(true);
       const result = await mcs.dispatch({
         instance: name,
-        target: 'start-minecraft',
+        target: 'start-server',
         params: {},
       });
       if (result.error === null) {
@@ -81,7 +81,7 @@ const useContainer = containerHook(({ isLoading, isProcessing, setProcessing, se
       setProcessing(true);
       const result = await mcs.dispatch({
         instance: name,
-        target: 'stop-minecraft',
+        target: 'stop-server',
         params: {},
       });
       if (result.error === null) {
@@ -96,7 +96,7 @@ const useContainer = containerHook(({ isLoading, isProcessing, setProcessing, se
       setProcessing(true);
       const result = await mcs.dispatch({
         instance: name,
-        target: 'save-minecraft-data',
+        target: 'backup-server',
         params: {},
       });
       if (result.error === null) {

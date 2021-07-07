@@ -25,7 +25,7 @@ export interface McsHandlers {
       pageToken?: string;
     },
     {
-      instances: Minecraft.MachineInfo[];
+      instances: Meteora.InstanceInfo[];
       nextPageToken: string | undefined;
     },
   ];
@@ -44,8 +44,8 @@ export interface McsHandlers {
   '/status': [
     { instance: string },
     {
-      machine: Minecraft.MachineInfo;
-      application: Minecraft.ApplicationStatus | null;
+      instance: Meteora.InstanceInfo;
+      serverProcess: Meteora.ServerProcessInfo | null;
     },
   ];
 }
@@ -83,10 +83,10 @@ createRequestHandlers<McsHandlers>({
     if (baseUrl) {
       const appStatus = await McsApiClient.status({ instance }, baseUrl);
       if (appStatus.error === null) {
-        return { machine, application: appStatus.data };
+        return { instance: machine, serverProcess: appStatus.data };
       }
     }
-    return { machine, application: null };
+    return { instance: machine, serverProcess: null };
   },
 }).forEach((endpoint) => {
   switch (endpoint.path) {

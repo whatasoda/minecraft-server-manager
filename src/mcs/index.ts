@@ -22,7 +22,7 @@ export interface McsHandlers {
     },
     ReturnType<typeof sliceLine>,
   ];
-  '/status': [{ instance: string }, Minecraft.ApplicationStatus];
+  '/status': [{ instance: string }, Meteora.ServerProcessInfo];
   '/make': [
     {
       instance: string;
@@ -40,7 +40,7 @@ createRequestHandlers<McsHandlers>({
     return sliceLine(raw, stride, cursor);
   },
   '/status': async () => {
-    return (await makeQuery('server-status')) as Minecraft.ApplicationStatus;
+    return (await makeQuery('server-status')) as Meteora.ServerProcessInfo;
   },
   '/make': async ({ body }) => {
     const { target, params } = body;

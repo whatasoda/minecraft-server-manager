@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useServices } from '../../contexts/services';
 
 export default function useServerList() {
-  const [list, setList] = useState<Minecraft.MachineInfo[]>([]);
+  const [list, setList] = useState<Meteora.InstanceInfo[]>([]);
   const pageToken = useRef<string>();
   const refreshCount = useRef<number>(0);
   const { mcs } = useServices();

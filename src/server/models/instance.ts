@@ -1,8 +1,6 @@
 import { protos } from '@google-cloud/compute';
 
-type InstanceInfo = Minecraft.MachineInfo;
-
-export default function transformInstance(instance: protos.google.cloud.compute.v1.IInstance): InstanceInfo {
+export default function transformInstance(instance: protos.google.cloud.compute.v1.IInstance): Meteora.InstanceInfo {
   const { name, machineType, status, metadata } = instance;
   const [{ networkIP: localIP, accessConfigs }] = instance.networkInterfaces || [];
   const [{ natIP: globalIP }] = accessConfigs || [];

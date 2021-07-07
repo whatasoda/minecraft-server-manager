@@ -4,13 +4,13 @@ import createCoreState from '../../utils/createCoreState';
 import { machineTypeMap } from './constants';
 
 interface State {
-  draft: Minecraft.MachineConfig;
-  body: Minecraft.MachineConfig;
+  draft: Meteora.ServerConfig;
+  body: Meteora.ServerConfig;
   isSizeUpdateLocked: boolean;
   isReadyToRequest: boolean;
 }
 
-const initialConfig: Minecraft.MachineConfig = {
+const initialConfig: Meteora.ServerConfig = {
   name: 'server',
   machineType: '',
   javaMemorySizeGb: 2,
@@ -26,7 +26,7 @@ const initialState: State = {
 type Action =
   | {
       type: 'set';
-      payload: KeyValueUnion<Minecraft.MachineConfig>;
+      payload: KeyValueUnion<Meteora.ServerConfig>;
     }
   | {
       type: 'clear';

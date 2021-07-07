@@ -28,7 +28,7 @@ const useContainer = containerHook((props: ServerSummaryProps) => {
       setLoading(true);
       const result = await mcs.status({ instance: name });
       if (result.error === null) {
-        setInstance(result.data);
+        setInstance(result.data.instance);
       }
       setLoading(false);
     }
