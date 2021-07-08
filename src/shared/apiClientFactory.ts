@@ -2,16 +2,24 @@ import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import type ResponseResult from './responseResult';
 
 type Method = 'get' | 'post';
-type Fetch<Req, Res> = (body: Req, baseURL?: string) => Promise<ResponseResult.Result<Res>>;
+type Fetch<B, P> = (body: B, baseURL?: string) => Promise<ResponseResult.Result<P>>;
+
+interface CreateFetchConfig<K extends PropertyKey, T> {
+  path: Extract<K, string>;
+  method: Method;
+  onResponse?: (response: T extends [any, infer P] ? ResponseResult.Result<P> : never) => void;
+}
 
 export default function createApiClient<T extends {}>(
   config: AxiosRequestConfig,
   configureClient?: (client: AxiosInstance) => void,
 ) {
-  type Target = [path: Extract<keyof T, string>, method: Method];
-  type RequestFunc<V extends Target> = T[V[0]] extends [infer Req, infer Res] ? Fetch<Req, Res> : never;
+  type Config = {
+    [K in keyof T]: CreateFetchConfig<K, T[K]>;
+  }[keyof T];
+  type RequestFunc<V extends Config> = T[V['path']] extends [infer B, infer P] ? Fetch<B, P> : never;
   interface TargetMap {
-    [alias: string]: Target;
+    [alias: string]: Config;
   }
 
   const client = axios.create({
@@ -28,9 +36,9 @@ export default function createApiClient<T extends {}>(
   configureClient?.(client);
 
   return function makeAlias<U extends TargetMap>(pathMap: U) {
-    const entries = Object.entries(pathMap) as [string, Target][];
-    return entries.reduce<Record<string, any>>((acc, [alias, [path, method]]) => {
-      acc[alias] = createFetch(client, path, method);
+    const entries = Object.entries(pathMap) as [string, Config][];
+    return entries.reduce<Record<string, any>>((acc, [alias, config]) => {
+      acc[alias] = createFetch(client, config);
       return acc;
     }, {}) as {
       [K in keyof U]: RequestFunc<U[K]>;
@@ -38,20 +46,24 @@ export default function createApiClient<T extends {}>(
   };
 }
 
-const createFetch = (client: AxiosInstance, path: string, method: Method): Fetch<{}, any> => {
+const createFetch = <K extends PropertyKey, T>(
+  client: AxiosInstance,
+  config: CreateFetchConfig<K, T>,
+): Fetch<{}, any> => {
+  const { path, method, onResponse } = config;
   return function fetch(body: {}, baseURL?: string): Promise<ResponseResult.Result<any>> {
-    switch (method) {
-      case 'get':
-        return client
-          .get<ResponseResult.Success<any>>(path, { baseURL, params: body })
-          .then(({ data }) => data)
-          .catch(handleError);
-      case 'post':
-        return client
-          .post<ResponseResult.Success<any>>(path, body, { baseURL })
-          .then(({ data }) => data)
-          .catch(handleError);
-    }
+    const promise = (() => {
+      switch (method) {
+        case 'get':
+          return client.get<ResponseResult.Success<any>>(path, { baseURL, params: body });
+        case 'post':
+          return client.post<ResponseResult.Success<any>>(path, body, { baseURL });
+      }
+    })();
+    const response = promise.then(({ data }) => data).catch(handleError);
+    response.then((res) => onResponse?.(res as any));
+
+    return response;
   };
 };
 

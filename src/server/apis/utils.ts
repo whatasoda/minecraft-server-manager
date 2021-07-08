@@ -29,7 +29,7 @@ export const McsApiClient = createApiClient<McsHandlers>({}, (client) => {
     return { ...req, headers };
   });
 })({
-  status: ['/status', 'get'],
+  status: { path: '/status', method: 'get' },
 });
 
 export const createMcsProxy = (path: string) => {
