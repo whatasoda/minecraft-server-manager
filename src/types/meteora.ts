@@ -4,6 +4,7 @@ import type { StatusResponse } from 'minecraft-server-util/dist/model/StatusResp
 declare global {
   namespace Meteora {
     export type InstanceStatus = NonNullable<protos.google.cloud.compute.v1.IInstance['status']>;
+    export type OperationStatus = NonNullable<protos.google.cloud.compute.v1.Operation['status']>;
 
     export interface ServerConfig {
       name: string;
@@ -39,6 +40,7 @@ declare global {
 
     export interface OperationInfo {
       id: string;
+      status: OperationStatus;
     }
   }
 }

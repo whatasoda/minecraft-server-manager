@@ -4,6 +4,7 @@ import {
   createInstance,
   deleteInstance,
   getInstanceInfo,
+  getOperationInfo,
   listInstances,
   startInstance,
   stopInstance,
@@ -36,11 +37,11 @@ export interface McsHandlers {
       diskSizeGb: number;
       javaMemorySizeGb: number;
     },
-    {},
+    { operation: Meteora.OperationInfo },
   ];
-  '/start': [{ instance: string }, {}];
-  '/stop': [{ instance: string }, {}];
-  '/delete': [{ instance: string }, {}];
+  '/start': [{ instance: string }, { operation: Meteora.OperationInfo }];
+  '/stop': [{ instance: string }, { operation: Meteora.OperationInfo }];
+  '/delete': [{ instance: string }, { operation: Meteora.OperationInfo }];
   '/status': [
     { instance: string },
     {
@@ -48,6 +49,7 @@ export interface McsHandlers {
       serverProcess: Meteora.ServerProcessInfo | null;
     },
   ];
+  '/operation': [{ operation: string }, { operation: Meteora.OperationInfo }];
 }
 
 createRequestHandlers<McsHandlers>({
@@ -56,49 +58,53 @@ createRequestHandlers<McsHandlers>({
     const data = await listInstances(req, pageToken);
     return data;
   },
+  '/status': async ({ body, req }) => {
+    const instance = await getInstanceInfo(req, body.instance);
+    const baseUrl = await resolveMcsBaseUrl(body.instance, () => Promise.resolve(instance)).catch(() => null);
+    if (baseUrl) {
+      const appStatus = await McsApiClient.status(body, baseUrl);
+      if (appStatus.error === null) {
+        return { instance, serverProcess: appStatus.data };
+      }
+    }
+    return { instance, serverProcess: null };
+  },
+  '/operation': async ({ body, req }) => {
+    const operation = await getOperationInfo(req, body.operation);
+    return { operation };
+  },
   '/create': async ({ body, req }) => {
     const { name, machineType, diskSizeGb, javaMemorySizeGb } = body;
-    const data = await createInstance(req, { name, machineType, diskSizeGb, javaMemorySizeGb });
-    return data;
+    const operation = await createInstance(req, { name, machineType, diskSizeGb, javaMemorySizeGb });
+    return { operation };
   },
   '/start': async ({ body, req }) => {
     const { instance } = body;
-    const data = await startInstance(req, instance);
-    return data;
+    const operation = await startInstance(req, instance);
+    return { operation };
   },
   '/stop': async ({ body, req }) => {
     const { instance } = body;
-    const data = await stopInstance(req, instance);
-    return data;
+    const operation = await stopInstance(req, instance);
+    return { operation };
   },
   '/delete': async ({ body, req }) => {
     const { instance } = body;
-    const data = await deleteInstance(req, instance);
-    return data;
-  },
-  '/status': async ({ body, req }) => {
-    const { instance } = body;
-    const machine = await getInstanceInfo(req, instance);
-    const baseUrl = await resolveMcsBaseUrl(instance, () => Promise.resolve(machine)).catch(() => null);
-    if (baseUrl) {
-      const appStatus = await McsApiClient.status({ instance }, baseUrl);
-      if (appStatus.error === null) {
-        return { instance: machine, serverProcess: appStatus.data };
-      }
-    }
-    return { instance: machine, serverProcess: null };
+    const operation = await deleteInstance(req, instance);
+    return { operation };
   },
 }).forEach((endpoint) => {
   switch (endpoint.path) {
+    case '/list':
+    case '/status':
+    case '/operation':
+      mcs.get(endpoint.path, endpoint.factory(defaultAdapter));
+      break;
     case '/create':
     case '/start':
     case '/stop':
     case '/delete':
       mcs.post(endpoint.path, endpoint.factory(defaultAdapter));
-      break;
-    case '/list':
-    case '/status':
-      mcs.get(endpoint.path, endpoint.factory(defaultAdapter));
       break;
     default:
       endpoint; // Should be `never` here
@@ -109,14 +115,7 @@ interface McsProxyConfig {
   path: string;
 }
 
-const PROXIES: McsProxyConfig[] = [
-  {
-    path: '/log',
-  },
-  {
-    path: '/make',
-  },
-];
+const PROXIES: McsProxyConfig[] = [{ path: '/log' }, { path: '/make' }];
 
 PROXIES.forEach(({ path }) => {
   mcs.use(path, createMcsProxy(path), (_, res) => {

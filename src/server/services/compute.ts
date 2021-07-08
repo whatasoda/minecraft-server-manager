@@ -17,23 +17,28 @@ export const listInstances = async (
   return { instances, nextPageToken: nextPageToken ?? undefined };
 };
 
-export const getInstanceInfo = async (key: ContextKey, vmName: string): Promise<Meteora.InstanceInfo> => {
-  const res = await computeAdapter.getInstance(key, vmName);
+export const getInstanceInfo = async (key: ContextKey, instance: string): Promise<Meteora.InstanceInfo> => {
+  const res = await computeAdapter.getInstance(key, instance);
   return transformInstance(res);
 };
 
-export const startInstance = async (key: ContextKey, vmName: string): Promise<Meteora.OperationInfo> => {
-  const operation = await computeAdapter.startInstance(key, vmName);
+export const getOperationInfo = async (key: ContextKey, operation: string): Promise<Meteora.OperationInfo> => {
+  const res = await computeAdapter.getOperation(key, operation);
+  return transformOperation(res);
+};
+
+export const startInstance = async (key: ContextKey, instance: string): Promise<Meteora.OperationInfo> => {
+  const operation = await computeAdapter.startInstance(key, instance);
   return transformOperation(operation);
 };
 
-export const stopInstance = async (key: ContextKey, vmName: string): Promise<Meteora.OperationInfo> => {
-  const operation = await computeAdapter.stopInstance(key, vmName);
+export const stopInstance = async (key: ContextKey, instance: string): Promise<Meteora.OperationInfo> => {
+  const operation = await computeAdapter.stopInstance(key, instance);
   return transformOperation(operation);
 };
 
-export const deleteInstance = async (key: ContextKey, vmName: string): Promise<Meteora.OperationInfo> => {
-  const operation = await computeAdapter.deleteInstance(key, vmName);
+export const deleteInstance = async (key: ContextKey, instance: string): Promise<Meteora.OperationInfo> => {
+  const operation = await computeAdapter.deleteInstance(key, instance);
   return transformOperation(operation);
 };
 
