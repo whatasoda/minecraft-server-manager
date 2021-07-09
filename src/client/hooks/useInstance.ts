@@ -3,49 +3,25 @@ import toast from '../components/_overlays/toast';
 import mcsService from '../services/mcs';
 import createStoreHook from '../utils/createStoreHook';
 
+type ComputeOperationKey = 'create' | 'start' | 'stop' | 'delete';
+type MakeDispatchKey = 'open' | 'close' | 'backup' | 'syncDatapack' | 'syncToStorage' | 'syncToServer';
+type LoadingKey = keyof InstanceState['loading'];
+type FlagKey = keyof InstanceState['can'];
+
 interface InstanceState {
+  isLoading: boolean;
   instance: Meteora.InstanceInfo;
   serverProcess: Meteora.ServerProcessInfo | null;
-  operations: {
-    create: Meteora.OperationInfo | null;
-    start: Meteora.OperationInfo | null;
-    stop: Meteora.OperationInfo | null;
-    delete: Meteora.OperationInfo | null;
-  };
-  flags: {
-    canStart: boolean;
-    canStop: boolean;
-    canDelete: boolean;
-    canOpen: boolean;
-    canClose: boolean;
-    canBackup: boolean;
-    canSyncDatapack: boolean;
-    canSyncToStorage: boolean;
-    canSyncToServer: boolean;
-  };
-  isLoading: boolean;
-  loading: {
+  operations: Record<ComputeOperationKey, Meteora.OperationInfo | null>;
+  can: Record<Exclude<ComputeOperationKey, 'create'> | MakeDispatchKey, boolean>;
+  loading: Record<ComputeOperationKey | MakeDispatchKey, boolean> & {
     refreshAll: boolean;
     refreshOperations: boolean;
     refreshStatus: boolean;
-    create: boolean;
-    start: boolean;
-    stop: boolean;
-    delete: boolean;
-    open: boolean;
-    close: boolean;
-    backup: boolean;
-    syncDatapack: boolean;
-    syncToStorage: boolean;
-    syncToServer: boolean;
   };
 }
 
-type LoadingKey = keyof InstanceState['loading'];
-type FlagKey = keyof InstanceState['flags'];
-type OperationKey = keyof InstanceState['operations'];
-
-createStoreHook(
+export default createStoreHook(
   produce((state: InstanceState, action: InstanceAction) => {
     switch (action.type) {
       case 'setLoading': {
@@ -54,34 +30,45 @@ createStoreHook(
         break;
       }
 
-      case 'refreshStatus': {
-        const { instance, serverProcess } = action.payload;
-        state.instance = instance;
-        state.serverProcess = serverProcess;
+      case 'setOperations': {
+        const { operations } = action.payload;
+        state.operations = operations;
         break;
       }
 
-      case 'refreshOperations': {
-        const { operations } = action.payload;
-        state.operations = operations;
+      case 'setOperation': {
+        const { key, operation } = action.payload;
+        state.operations[key] = operation;
+        break;
+      }
+
+      case 'setStatus': {
+        const { instance, serverProcess } = action.payload;
+        state.instance = instance;
+        state.serverProcess = serverProcess;
         break;
       }
     }
 
     state.isLoading = Object.values(state.loading).some(Boolean);
     if (state.isLoading) {
-      setAllFlagsOff();
+      (Object.keys(state.can) as FlagKey[]).forEach((key) => {
+        state.can[key] = false;
+      });
     } else {
-      //
+      const isServerOpened = !!state.serverProcess;
+      state.can.start = state.instance.status === 'STOPPED';
+      state.can.stop = state.instance.status === 'RUNNING';
+      state.can.delete = state.instance.status === 'STOPPED';
+      state.can.open = state.instance.status === 'RUNNING' && !isServerOpened;
+      state.can.close = state.instance.status === 'RUNNING' && isServerOpened;
+      state.can.backup = state.instance.status === 'RUNNING';
+      state.can.syncDatapack = state.instance.status === 'RUNNING';
+      state.can.syncToServer = state.instance.status === 'RUNNING' && !isServerOpened;
+      state.can.syncToStorage = state.instance.status === 'RUNNING' && !isServerOpened;
     }
 
     return state;
-
-    function setAllFlagsOff() {
-      (Object.keys(state.flags) as FlagKey[]).forEach((key) => {
-        state.flags[key] = false;
-      });
-    }
   }),
   ({ dispatch, getState }) => ({
     async setLoading(key: LoadingKey, value: boolean) {
@@ -102,7 +89,7 @@ createStoreHook(
       await this.setLoading('refreshOperations', true);
       const state = getState();
       const operations: InstanceState['operations'] = { ...state.operations };
-      const promises = (Object.keys(operations) as OperationKey[]).map(async (key) => {
+      const promises = (Object.keys(operations) as ComputeOperationKey[]).map(async (key) => {
         const prev = operations[key];
         if (!prev) return;
         const res = await mcsService.operation({ operation: prev.id });
@@ -112,12 +99,13 @@ createStoreHook(
         } else if (curr.status === 'DONE') {
           operations[key] = null;
           toast.success(`Successfully completed '${key}' operation`);
+          await this.setLoading(key, false);
         } else {
           operations[key] = curr;
         }
       });
       await Promise.all(promises);
-      await dispatch({ type: 'refreshOperations', payload: { operations } });
+      await dispatch({ type: 'setOperations', payload: { operations } });
       await this.setLoading('refreshOperations', false);
     },
 
@@ -126,9 +114,65 @@ createStoreHook(
       const state = getState();
       const res = await mcsService.status({ instance: state.instance.name });
       if (res.data) {
-        await dispatch({ type: 'refreshStatus', payload: res.data });
+        const { instance, serverProcess } = res.data;
+        await dispatch({ type: 'setStatus', payload: { instance, serverProcess } });
       }
       await this.setLoading('refreshStatus', false);
+    },
+
+    async operate(key: Exclude<ComputeOperationKey, 'create'>) {
+      const state = getState();
+      if (!state.can[key]) return;
+
+      await this.setLoading(key, true);
+      const res = await mcsService[key]({ instance: state.instance.name });
+      if (res.data) {
+        const { operation } = res.data;
+        await dispatch({ type: 'setOperation', payload: { key, operation } });
+      } else {
+        await this.setLoading(key, false);
+      }
+    },
+
+    async make(key: MakeDispatchKey) {
+      const state = getState();
+      if (!state.can[key]) return;
+
+      const isConfirmed = await (async function confirm() {
+        switch (key) {
+          case 'syncDatapack':
+          case 'syncToServer':
+          case 'syncToStorage':
+            // TODO: show dialog to confirm breaking action
+            return true;
+          default:
+            return true;
+        }
+      })();
+      if (!isConfirmed) return;
+
+      await this.setLoading(key, true);
+      const common = { instance: state.instance.name };
+      const res = await (async function call() {
+        switch (key) {
+          // TODO: Do we need dedicated endpoints for these make operations?
+          case 'open':
+            return mcsService.dispatch({ ...common, target: 'start-server', params: {} });
+          case 'close':
+            return mcsService.dispatch({ ...common, target: 'stop-server', params: {} });
+          case 'backup':
+            return mcsService.dispatch({ ...common, target: 'backup-server', params: {} });
+          case 'syncDatapack':
+            return mcsService.dispatch({ ...common, target: 'load-datapacks', params: {} });
+          case 'syncToServer':
+            return mcsService.dispatch({ ...common, target: 'load-server', params: { mode: 'force' } });
+          case 'syncToStorage':
+            return mcsService.dispatch({ ...common, target: 'update-server-source', params: {} });
+        }
+      })();
+      res; // TODO: Do we need to show toast here?
+      await this.refreshAll();
+      await this.setLoading(key, false);
     },
   }),
 );
@@ -139,11 +183,15 @@ type InstanceAction =
       payload: { key: LoadingKey; value: boolean };
     }
   | {
-      type: 'refreshOperations';
+      type: 'setOperations';
       payload: { operations: InstanceState['operations'] };
     }
   | {
-      type: 'refreshStatus';
+      type: 'setOperation';
+      payload: { key: ComputeOperationKey; operation: Meteora.OperationInfo };
+    }
+  | {
+      type: 'setStatus';
       payload: {
         instance: InstanceState['instance'];
         serverProcess: InstanceState['serverProcess'];
