@@ -1,26 +1,46 @@
 import { produce } from 'immer';
+import { initRecord } from '../../shared/utils/record';
 import toast from '../components/_overlays/toast';
 import mcsService, { refreshOperations } from '../services/mcs';
 import createStoreHook from '../utils/createStoreHook';
 
-type ComputeOperationKey = 'create' | 'start' | 'stop' | 'delete';
-type MakeDispatchKey = 'open' | 'close' | 'backup' | 'syncDatapack' | 'syncToStorage' | 'syncToServer';
-type LoadingKey = keyof InstanceState['loading'];
-type FlagKey = keyof InstanceState['can'];
+const OPERATION_KEYS = ['start', 'stop', 'delete'] as const;
+const MAKE_DISPATCH_KEYS = ['open', 'close', 'backup', 'syncDatapack', 'syncToStorage', 'syncToServer'] as const;
+const READY_KIND_KEY = [...OPERATION_KEYS, ...MAKE_DISPATCH_KEYS] as const;
 
-interface InstanceState {
+type OperationKey = typeof OPERATION_KEYS[number];
+type MakeDispatchKey = typeof MAKE_DISPATCH_KEYS[number];
+type ReadyKindKey = typeof READY_KIND_KEY[number];
+type LoadingKey = keyof ServerState['loading'];
+
+interface ServerState {
+  name: string;
   isLoading: boolean;
-  instance: Meteora.InstanceInfo;
+  instance: Meteora.InstanceInfo | null;
   serverProcess: Meteora.ServerProcessInfo | null;
-  operations: Record<ComputeOperationKey, Meteora.OperationInfo | null>;
-  can: Record<Exclude<ComputeOperationKey, 'create'> | MakeDispatchKey, boolean>;
-  loading: Record<ComputeOperationKey | MakeDispatchKey, boolean> & {
+  operations: Record<'create' | OperationKey, Meteora.OperationInfo | null>;
+  ready: Record<ReadyKindKey, boolean>;
+  loading: Record<OperationKey | MakeDispatchKey, boolean> & {
+    create: boolean;
     refresh: boolean;
   };
 }
 
+export const createInitialState = (name: string, createOperation: Meteora.OperationInfo | null): ServerState => ({
+  name,
+  isLoading: false,
+  instance: null,
+  serverProcess: null,
+  operations: {
+    ...initRecord(null, OPERATION_KEYS),
+    create: createOperation,
+  },
+  ready: initRecord(false, READY_KIND_KEY),
+  loading: initRecord(false, [...OPERATION_KEYS, ...MAKE_DISPATCH_KEYS, 'create', 'refresh']),
+});
+
 export default createStoreHook(
-  produce((state: InstanceState, action: InstanceAction) => {
+  produce((state: ServerState, action: InstanceAction) => {
     switch (action.type) {
       case 'setLoading': {
         const { key, value } = action.payload;
@@ -48,22 +68,24 @@ export default createStoreHook(
       }
     }
 
+    const { instance, serverProcess } = state;
+    // const isInstanceExisted = !!instance;
+    const isServerOpened = !!instance && !!serverProcess;
     state.isLoading = Object.values(state.loading).some(Boolean);
-    if (state.isLoading) {
-      (Object.keys(state.can) as FlagKey[]).forEach((key) => {
-        state.can[key] = false;
+    if (state.isLoading || !instance) {
+      (Object.keys(state.ready) as ReadyKindKey[]).forEach((key) => {
+        state.ready[key] = false;
       });
     } else {
-      const isServerOpened = !!state.serverProcess;
-      state.can.start = state.instance.status === 'STOPPED';
-      state.can.stop = state.instance.status === 'RUNNING';
-      state.can.delete = state.instance.status === 'STOPPED';
-      state.can.open = state.instance.status === 'RUNNING' && !isServerOpened;
-      state.can.close = state.instance.status === 'RUNNING' && isServerOpened;
-      state.can.backup = state.instance.status === 'RUNNING';
-      state.can.syncDatapack = state.instance.status === 'RUNNING';
-      state.can.syncToServer = state.instance.status === 'RUNNING' && !isServerOpened;
-      state.can.syncToStorage = state.instance.status === 'RUNNING' && !isServerOpened;
+      state.ready.start = instance.status === 'STOPPED';
+      state.ready.stop = instance.status === 'RUNNING';
+      state.ready.delete = instance.status === 'STOPPED';
+      state.ready.open = instance.status === 'RUNNING' && !isServerOpened;
+      state.ready.close = instance.status === 'RUNNING' && isServerOpened;
+      state.ready.backup = instance.status === 'RUNNING';
+      state.ready.syncDatapack = instance.status === 'RUNNING';
+      state.ready.syncToServer = instance.status === 'RUNNING' && !isServerOpened;
+      state.ready.syncToStorage = instance.status === 'RUNNING' && !isServerOpened;
     }
 
     return state;
@@ -85,7 +107,7 @@ export default createStoreHook(
       }).then((operations) => {
         return dispatch({ type: 'setOperations', payload: { operations } });
       });
-      const res = await mcsService.status({ instance: state.instance.name });
+      const res = await mcsService.status({ instance: state.name });
       if (res.data) {
         const { instance, serverProcess } = res.data;
         await dispatch({ type: 'setStatus', payload: { instance, serverProcess } });
@@ -93,12 +115,12 @@ export default createStoreHook(
       await this.setLoading('refresh', false);
     },
 
-    async operate(key: Exclude<ComputeOperationKey, 'create'>) {
+    async operate(key: Exclude<OperationKey, 'create'>) {
       const state = getState();
-      if (!state.can[key]) return;
+      if (!state.ready[key]) return;
 
       await this.setLoading(key, true);
-      const res = await mcsService[key]({ instance: state.instance.name });
+      const res = await mcsService[key]({ instance: state.name });
       if (res.data) {
         const { operation } = res.data;
         await dispatch({ type: 'setOperation', payload: { key, operation } });
@@ -109,7 +131,7 @@ export default createStoreHook(
 
     async make(key: MakeDispatchKey) {
       const state = getState();
-      if (!state.can[key]) return;
+      if (!state.ready[key]) return;
 
       const isConfirmed = await (async function confirm() {
         switch (key) {
@@ -125,7 +147,7 @@ export default createStoreHook(
       if (!isConfirmed) return;
 
       await this.setLoading(key, true);
-      const common = { instance: state.instance.name };
+      const common = { instance: state.name };
       const res = await (async function call() {
         switch (key) {
           // TODO: Do we need dedicated endpoints for these make operations?
@@ -157,16 +179,16 @@ type InstanceAction =
     }
   | {
       type: 'setOperations';
-      payload: { operations: InstanceState['operations'] };
+      payload: { operations: ServerState['operations'] };
     }
   | {
       type: 'setOperation';
-      payload: { key: ComputeOperationKey; operation: Meteora.OperationInfo };
+      payload: { key: OperationKey; operation: Meteora.OperationInfo };
     }
   | {
       type: 'setStatus';
       payload: {
-        instance: InstanceState['instance'];
-        serverProcess: InstanceState['serverProcess'];
+        instance: ServerState['instance'];
+        serverProcess: ServerState['serverProcess'];
       };
     };
