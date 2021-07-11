@@ -1,5 +1,5 @@
 import { produce } from 'immer';
-import validateServerConfig from '../../shared/validations/serverConfig';
+import { serverConfigDefault, validateServerConfig } from '../../shared/models/server-config';
 import toast from '../components/_overlays/toast';
 import mcsService, { refreshOperations } from '../services/mcs';
 import createStoreHook from '../utils/createStoreHook';
@@ -17,12 +17,27 @@ interface ServerListState {
     createOperation: Meteora.OperationInfo | null;
   }[];
   operations: Record<OperationKey, Meteora.OperationInfo | null>;
-  can: Record<OperationKey, boolean>;
+  ready: Record<OperationKey, boolean>;
   loading: {
     refresh: boolean;
     create: boolean;
   };
 }
+
+const validationResultDefault = validateServerConfig(serverConfigDefault, { servers: [] });
+export const createInitialState = (): ServerListState => ({
+  create: {
+    config: serverConfigDefault,
+    validations: validationResultDefault,
+  },
+  servers: [],
+  operations: { create: null },
+  ready: { create: false },
+  loading: {
+    create: false,
+    refresh: false,
+  },
+});
 
 export default createStoreHook(
   produce((state: ServerListState, action: InstanceListAction) => {
@@ -58,7 +73,7 @@ export default createStoreHook(
 
     const isLoading = Object.values(state.loading).some(Boolean);
     state.create.validations = validateServerConfig(state.create.config, { servers: state.servers });
-    state.can.create = !isLoading && state.create.validations.isAllValid;
+    state.ready.create = !isLoading && state.create.validations.isAllValid;
     return state;
   }),
   ({ dispatch, getState }) => ({
@@ -93,7 +108,7 @@ export default createStoreHook(
 
     async create() {
       const state = getState();
-      if (!state.can.create) return;
+      if (!state.ready.create) return;
       await this.setLoading('create', true);
     },
   }),

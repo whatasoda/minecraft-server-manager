@@ -1,7 +1,10 @@
+import fs from 'fs';
 import * as computeAdapter from '../service-adapters/compute';
-import createInstanceConfig from '../models/instance-config';
 import transformInstance from '../models/instance';
 import transformOperation from '../models/operation';
+import { mcsdir } from '../../shared/workdir';
+import { createInstanceConfig } from '../../shared/models/server-config';
+import { BUCKET_NAME, MCS_TOKEN_SECRET, METADATA, PROJECT_ID } from '../constants';
 
 type ContextKey = computeAdapter.ContextKey;
 
@@ -43,6 +46,15 @@ export const deleteInstance = async (key: ContextKey, instance: string): Promise
 };
 
 export const createInstance = async (key: ContextKey, config: Meteora.ServerConfig): Promise<Meteora.OperationInfo> => {
-  const operation = await computeAdapter.insertInstance(key, await createInstanceConfig(config));
+  const instanceConfig = createInstanceConfig(config, {
+    projectId: PROJECT_ID,
+    zone: METADATA.ZONE,
+    bucketName: BUCKET_NAME,
+    mcsTokenSecret: MCS_TOKEN_SECRET,
+    // TODO: store them as a JSON on build time
+    startupScript: await fs.promises.readFile(mcsdir('startup.sh'), 'utf-8'),
+    shutdownScript: await fs.promises.readFile(mcsdir('shutdown.sh'), 'utf-8'),
+  });
+  const operation = await computeAdapter.insertInstance(key, instanceConfig);
   return transformOperation(operation);
 };
