@@ -1,6 +1,6 @@
 import { produce } from 'immer';
 import toast from '../components/_overlays/toast';
-import mcsService from '../services/mcs';
+import mcsService, { refreshOperations } from '../services/mcs';
 import createStoreHook from '../utils/createStoreHook';
 
 type ComputeOperationKey = 'create' | 'start' | 'stop' | 'delete';
@@ -15,9 +15,7 @@ interface InstanceState {
   operations: Record<ComputeOperationKey, Meteora.OperationInfo | null>;
   can: Record<Exclude<ComputeOperationKey, 'create'> | MakeDispatchKey, boolean>;
   loading: Record<ComputeOperationKey | MakeDispatchKey, boolean> & {
-    refreshAll: boolean;
-    refreshOperations: boolean;
-    refreshStatus: boolean;
+    refresh: boolean;
   };
 }
 
@@ -78,46 +76,21 @@ export default createStoreHook(
       }
     },
 
-    async refreshAll() {
-      await this.setLoading('refreshAll', true);
-      await this.refreshOperations();
-      await this.refreshStatus();
-      await this.setLoading('refreshAll', false);
-    },
-
-    async refreshOperations() {
-      await this.setLoading('refreshOperations', true);
+    async refresh() {
+      await this.setLoading('refresh', true);
       const state = getState();
-      const operations: InstanceState['operations'] = { ...state.operations };
-      const promises = (Object.keys(operations) as ComputeOperationKey[]).map(async (key) => {
-        const prev = operations[key];
-        if (!prev) return;
-        const res = await mcsService.operation({ operation: prev.id });
-        const curr = res.data?.operation;
-        if (!curr) {
-          return;
-        } else if (curr.status === 'DONE') {
-          operations[key] = null;
-          toast.success(`Successfully completed '${key}' operation`);
-          await this.setLoading(key, false);
-        } else {
-          operations[key] = curr;
-        }
+      await refreshOperations(state.operations, async (key) => {
+        toast.success(`Successfully completed '${key}' operation`);
+        await this.setLoading(key, false);
+      }).then((operations) => {
+        return dispatch({ type: 'setOperations', payload: { operations } });
       });
-      await Promise.all(promises);
-      await dispatch({ type: 'setOperations', payload: { operations } });
-      await this.setLoading('refreshOperations', false);
-    },
-
-    async refreshStatus() {
-      await this.setLoading('refreshStatus', true);
-      const state = getState();
       const res = await mcsService.status({ instance: state.instance.name });
       if (res.data) {
         const { instance, serverProcess } = res.data;
         await dispatch({ type: 'setStatus', payload: { instance, serverProcess } });
       }
-      await this.setLoading('refreshStatus', false);
+      await this.setLoading('refresh', false);
     },
 
     async operate(key: Exclude<ComputeOperationKey, 'create'>) {
@@ -171,7 +144,7 @@ export default createStoreHook(
         }
       })();
       res; // TODO: Do we need to show toast here?
-      await this.refreshAll();
+      await this.refresh();
       await this.setLoading(key, false);
     },
   }),

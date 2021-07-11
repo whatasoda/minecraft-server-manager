@@ -1,7 +1,7 @@
 import { useMemo, useReducer } from 'react';
 import { produce } from 'immer';
 import createCoreState from '../../utils/createCoreState';
-import { machineTypeMap } from './constants';
+import { machineTypeMap } from '../../../shared/constants/machineType';
 
 interface State {
   draft: Meteora.ServerConfig;

@@ -79,4 +79,27 @@ const mcsService = createApiClient<McsServerHandlers & Omit<McsInstanceHandlers,
   },
 });
 
+export const refreshOperations = async <K extends string>(
+  operations: { [_ in K]: Meteora.OperationInfo | null },
+  onOperationComplete: (key: K) => Promise<void>,
+) => {
+  operations = { ...operations };
+  const promises = (Object.keys(operations) as K[]).map(async (key) => {
+    const operationId = operations[key]?.id;
+    if (!operationId) return;
+    const res = await mcsService.operation({ operation: operationId });
+    const next = res.data?.operation;
+    if (!next) {
+      return;
+    } else if (next.status === 'DONE') {
+      operations[key] = null;
+      await onOperationComplete(key);
+    } else {
+      operations[key] = next;
+    }
+  });
+  await Promise.all(promises);
+  return operations;
+};
+
 export default mcsService;
