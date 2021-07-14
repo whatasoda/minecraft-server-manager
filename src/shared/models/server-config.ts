@@ -1,4 +1,4 @@
-import type { protos } from '@google-cloud/compute';
+import type { compute_v1 } from 'googleapis';
 import { machineTypeMap, machineTypes } from '../constants/machineType';
 
 export const serverConfigDefault: Meteora.ServerConfig = {
@@ -19,7 +19,7 @@ interface InstanceConfigContext {
 export const createInstanceConfig = (
   config: Meteora.ServerConfig,
   context: InstanceConfigContext,
-): protos.google.cloud.compute.v1.IInstance => {
+): compute_v1.Schema$Instance => {
   const { isAllValid, ...validation } = validateServerConfig(config, { servers: [] });
   if (!isAllValid) {
     throw new Error(`Invalid server config: ${JSON.stringify(validation, null, '  ')}`);
@@ -114,7 +114,7 @@ export const validateServerConfig = (
 
   const result: Omit<ValidationResult, 'isAllValid'> = {
     name: {
-      alreadyExists: !context.servers.some((item) => item.name === name),
+      alreadyExists: context.servers.some((item) => item.name === name),
       invalidCharactors: !isValidInstanceName(name),
     },
     machineType: {
@@ -132,7 +132,7 @@ export const validateServerConfig = (
     },
   };
 
-  const isAllValid = Object.values(result).every((item) => Object.values(item).every(Boolean));
+  const isAllValid = !Object.values(result).some((item) => Object.values(item).some(Boolean));
   return { isAllValid, ...result };
 };
 

@@ -1,6 +1,6 @@
-import { protos } from '@google-cloud/compute';
+import type { compute_v1 } from 'googleapis';
 
-export default function transformInstance(instance: protos.google.cloud.compute.v1.IInstance): Meteora.InstanceInfo {
+export default function transformInstance(instance: compute_v1.Schema$Instance): Meteora.InstanceInfo {
   const { name, machineType, status, metadata } = instance;
   const [{ networkIP: localIP, accessConfigs }] = instance.networkInterfaces || [];
   const [{ natIP: globalIP }] = accessConfigs || [];
@@ -17,7 +17,7 @@ export default function transformInstance(instance: protos.google.cloud.compute.
   return {
     name: name!,
     machineType: machineType!,
-    status: status!,
+    status: status! as Meteora.InstanceStatus,
     localIP: localIP!,
     globalIP: globalIP ?? null,
     diskSize: diskSize!,
