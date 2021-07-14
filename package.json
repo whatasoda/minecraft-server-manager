@@ -69,9 +69,12 @@
     "react": "17.0.2",
     "react-dom": "17.0.2",
     "react-router-dom": "5.2.0",
+    "reselect": "4.0.0",
+    "shallowequal": "1.1.0",
     "styled-components": "5.3.0",
     "ts-node": "10.0.0",
     "typescript": "4.3.2",
+    "use-context-selector": "1.3.7",
     "uuid": "8.3.2"
   },
   "devDependencies": {
@@ -85,6 +88,7 @@
     "@types/react-dom": "17.0.5",
     "@types/react-router-dom": "5.1.7",
     "@types/session-file-store": "1.2.1",
+    "@types/shallowequal": "1.1.1",
     "@types/styled-components": "5.1.9",
     "@types/uuid": "8.3.1",
     "@types/webpack-dev-server": "3.11.4",
