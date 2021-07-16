@@ -68,13 +68,13 @@ export const createAdapter = <
 
 export default function defineStore<State extends {}>() {
   return function <Actions extends {}, Effects extends EffectConfigRecord<State>>(
-    reducers: ChildReducer<any>[],
+    reducers: ChildReducer<State, any>[],
     actionFactory: ActionFactory<State, Actions>,
     effectFactory: EffectFactory<State, Actions, Effects>,
   ) {
     const rootReducer: Reducer<State> = produce((state, action) => {
       for (const reduce of reducers) {
-        const next = reduce(state, action);
+        const next = reduce(state as State, action);
         if (next && next !== state) {
           state = createDraft(next);
         }
