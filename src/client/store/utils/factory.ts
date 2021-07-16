@@ -8,7 +8,7 @@ export type Dispatcher = (action: ActionObject) => void;
 type StateRef<State extends {}> = { current: State };
 type Reducer<State extends {}> = (state: State, action: ActionObject) => State;
 
-type ChildReducer<State extends {}, Action extends ActionObject = ActionObject> = (
+export type ChildReducer<State extends {}, Action extends ActionObject = ActionObject> = (
   state: State,
   action: Action,
 ) => State | void;
