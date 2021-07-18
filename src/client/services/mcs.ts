@@ -13,7 +13,7 @@ const failPost = (path: string, message: string) => {
   return `Failed to call '${baseURL}${path}' due to: '${message}'`;
 };
 
-const mcsService = createApiClient<McsServerHandlers & Omit<McsInstanceHandlers, '/status'>>({ baseURL })({
+const mcsService = createApiClient<McsServerHandlers & McsInstanceHandlers>({ baseURL })({
   list: {
     path: '/list',
     method: 'get',
@@ -33,6 +33,13 @@ const mcsService = createApiClient<McsServerHandlers & Omit<McsInstanceHandlers,
     method: 'get',
     onResponse: ({ error }) => {
       error?.message && toast.danger(failGet('/status', error?.message));
+    },
+  },
+  serverStatus: {
+    path: '/server-status',
+    method: 'get',
+    onResponse: ({ error }) => {
+      error?.message && toast.danger(failGet('/server-status', error?.message));
     },
   },
   operation: {

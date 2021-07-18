@@ -29,9 +29,10 @@ export const McsApiClient = createApiClient<McsHandlers>({}, (client) => {
     return { ...req, headers };
   });
 })({
-  status: { path: '/status', method: 'get' },
+  status: { path: '/server-status', method: 'get' },
 });
 
+// TODO: set short timeout
 export const createMcsProxy = (path: string) => {
   return createProxyMiddleware({
     pathRewrite: () => path,

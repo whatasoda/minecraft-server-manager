@@ -115,7 +115,7 @@ interface McsProxyConfig {
   path: string;
 }
 
-const PROXIES: McsProxyConfig[] = [{ path: '/log' }, { path: '/make' }];
+const PROXIES: McsProxyConfig[] = [{ path: '/log' }, { path: '/make' }, { path: '/server-status' }];
 
 PROXIES.forEach(({ path }) => {
   mcs.use(path, createMcsProxy(path), (_, res) => {
