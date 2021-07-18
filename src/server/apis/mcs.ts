@@ -64,7 +64,7 @@ createRequestHandlers<McsHandlers>({
     if (baseUrl) {
       const appStatus = await McsApiClient.status(body, baseUrl);
       if (appStatus.error === null) {
-        return { instance, serverProcess: appStatus.data };
+        return { instance, serverProcess: appStatus.data.server };
       }
     }
     return { instance, serverProcess: null };

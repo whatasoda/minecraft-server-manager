@@ -22,7 +22,7 @@ export interface McsHandlers {
     },
     ReturnType<typeof sliceLine>,
   ];
-  '/server-status': [{ instance: string }, Meteora.ServerProcessInfo];
+  '/server-status': [{ instance: string }, { server: Meteora.ServerProcessInfo }];
   '/make': [
     {
       instance: string;
@@ -40,7 +40,8 @@ createRequestHandlers<McsHandlers>({
     return sliceLine(raw, stride, cursor);
   },
   '/server-status': async () => {
-    return (await makeQuery('server-status')) as Meteora.ServerProcessInfo;
+    const server = (await makeQuery('server-status')) as Meteora.ServerProcessInfo;
+    return { server };
   },
   '/make': async ({ body }) => {
     const { target, params } = body;

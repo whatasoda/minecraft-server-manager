@@ -57,8 +57,8 @@ const reduceState: ChildReducer<State> = () => {};
 
 const createActions = createActionFactory<State, Action>()(({ dispatch, getState }) => ({
   async refresh() {
-    const state = getState();
-    if (state.list.isLoading) return;
+    const { list } = getState();
+    if (list.isLoading) return;
     await dispatch({ type: 'list.setLoading', payload: { isLoading: true } });
     const res = await mcsService.list({});
     if (res.data) {

@@ -10,13 +10,13 @@ declare global {
           instance: InstanceState;
         }
 
-        type OperationKey = typeof OPERATION_KEYS[number];
-        type InstanceLoadingKey = 'create' | 'refresh' | OperationKey;
+        type InstanceOperationKey = typeof OPERATION_KEYS[number];
+        type InstanceLoadingKey = 'create' | 'refresh' | InstanceOperationKey;
 
         interface InstanceState {
           info: Meteora.InstanceInfo;
-          operations: Record<'create' | OperationKey, Meteora.OperationInfo | null>;
-          ready: Record<OperationKey, boolean>;
+          operations: Record<'create' | InstanceOperationKey, Meteora.OperationInfo | null>;
+          ready: Record<InstanceOperationKey, boolean>;
           loading: Record<InstanceLoadingKey, boolean>;
         }
       }
@@ -28,7 +28,7 @@ const OPERATION_KEYS = ['start', 'stop', 'delete'] as const;
 
 type State = Meteora.Store.ServerDetail.State;
 type LoadingKey = Meteora.Store.ServerDetail.InstanceLoadingKey;
-type OperationKey = Meteora.Store.ServerDetail.OperationKey;
+type OperationKey = Meteora.Store.ServerDetail.InstanceOperationKey;
 type Operations = State['instance']['operations'];
 
 type Action =
@@ -45,6 +45,12 @@ const reduceAction: ChildReducer<State, Action> = (state, action) => {
       if (curr !== next) {
         loading[key] = next;
       }
+      break;
+    }
+
+    case 'instance.setInfo': {
+      const { info } = action.payload;
+      state.instance.info = info;
       break;
     }
 
@@ -72,6 +78,7 @@ const reduceState: ChildReducer<State> = ({ instance, common }) => {
 const createActions = createActionFactory<State, Action>()(({ dispatch, getState }) => ({
   async refresh() {
     const { instance } = getState();
+    if (instance.loading.refresh) return;
     await dispatch({ type: 'instance.setLoading', payload: { key: 'refresh', isLoading: true } });
     const res = await mcsService.status({ instance: instance.info.name });
     if (res.data) {
