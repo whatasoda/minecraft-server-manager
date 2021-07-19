@@ -2,7 +2,7 @@ import produce, { createDraft } from 'immer';
 import { createPromise } from '../../../shared/utils/promise';
 
 export type ActionObject = { type: string };
-export type InitialStateInit<State extends {}> = State | (() => State);
+export type InitialStateInit<State extends {}> = () => State;
 export type Dispatcher = (action: ActionObject) => void;
 
 type StateRef<State extends {}> = { current: State };
@@ -38,13 +38,15 @@ type EffectRecord<State extends {}, Effects extends EffectConfigRecord<State>> =
   [K in keyof Effects]: EffectArgs<State>;
 };
 
-export type CreateStoreCore<State extends {}, Actions extends {}, Effects extends EffectConfigRecord<State>> = (
-  initialStateInit: InitialStateInit<State>,
-  stateRefInit?: Partial<StateRef<State>>,
-) => StoreCore<State, Actions, Effects>;
+export type CreateStoreCore<
+  Props extends {},
+  State extends {},
+  Actions extends {},
+  Effects extends EffectConfigRecord<State>,
+> = (props: Props) => StoreCore<State, Actions, Effects>;
 
 interface StoreCore<State extends {}, Actions extends {}, Effects extends EffectConfigRecord<State>> {
-  stateRef: StateRef<State>;
+  initialState: State;
   reducer: Reducer<State>;
   createStaticItems: (dispatcher: Dispatcher) => {
     actions: Actions;
@@ -52,88 +54,94 @@ interface StoreCore<State extends {}, Actions extends {}, Effects extends Effect
   };
 }
 
-export type StoreAdapter<T, State extends {}, Actions extends {}, Effects extends EffectConfigRecord<State>> = (
-  createCore: CreateStoreCore<State, Actions, Effects>,
-  initialStateInit: InitialStateInit<State>,
-) => T;
+export type StoreAdapter<
+  T,
+  Props extends {},
+  State extends {},
+  Actions extends {},
+  Effects extends EffectConfigRecord<State>,
+> = (createCore: CreateStoreCore<Props, State, Actions, Effects>) => T;
 
-export const createAdapter = <
-  T extends <State extends {}, Actions extends {}, Effects extends EffectConfigRecord<State>>(
-    createCore: CreateStoreCore<State, Actions, Effects>,
-    initialStateInit: InitialStateInit<State>,
-  ) => any,
+type StoreAdapterTemplate = <
+  Props extends {},
+  State extends {},
+  Actions extends {},
+  Effects extends EffectConfigRecord<State>,
 >(
-  adapter: T,
-) => adapter;
+  createCore: CreateStoreCore<Props, State, Actions, Effects>,
+) => any;
 
-export default function defineStore<State extends {}>() {
-  return function <Actions extends {}, Effects extends EffectConfigRecord<State>>(
-    reducers: ChildReducer<State, any>[],
-    actionFactory: ActionFactory<State, Actions>,
-    effectFactory: EffectFactory<State, Actions, Effects>,
-  ) {
-    const rootReducer: Reducer<State> = produce((state, action) => {
-      for (const reduce of reducers) {
-        const next = reduce(state as State, action);
-        if (next && next !== state) {
-          state = createDraft(next);
-        }
+export const createAdapter = <T extends StoreAdapterTemplate>(adapter: T) => adapter;
+
+export default function defineStore<
+  Props extends {},
+  State extends {},
+  Actions extends {},
+  Effects extends EffectConfigRecord<State>,
+>(
+  initialStateInit: (props: Props) => State,
+  reducers: ChildReducer<State, any>[],
+  actionFactory: ActionFactory<State, Actions>,
+  effectFactory: EffectFactory<State, Actions, Effects>,
+) {
+  const rootReducer: Reducer<State> = produce((state, action) => {
+    for (const reduce of reducers) {
+      const next = reduce(state as State, action);
+      if (next && next !== state) {
+        state = createDraft(next);
       }
-      return state;
-    });
+    }
+    return state;
+  });
 
-    const createStoreCore = (initialStateInit: InitialStateInit<State>): StoreCore<State, Actions, Effects> => {
-      const actionPromises = new WeakMap<ActionObject, { resolve: () => void }>();
+  const createStoreCore = (props: Props): StoreCore<State, Actions, Effects> => {
+    const actionPromises = new WeakMap<ActionObject, { resolve: () => void }>();
 
-      const reducer: Reducer<State> = (state, action) => {
-        action = { ...action };
-        const next = rootReducer(state, action);
-        stateRef.current = next;
-        actionPromises.get(action)?.resolve();
-        return next;
-      };
-
-      const stateRef = {} as StateRef<State>;
-      const initialState = initialStateInit instanceof Function ? initialStateInit() : initialStateInit;
-      // apply reducers to the initial state
-      stateRef.current = reducer(initialState, {} as ActionObject);
-
-      const createStaticItems = (dispatcher: Dispatcher) => {
-        const actions = createActions(dispatcher);
-        const effects = createEffects(actions);
-        return { actions, effects };
-      };
-
-      const createActions = (dispatcher: Dispatcher) => {
-        const actionContext: ActionContext<State> = {
-          getState: () => stateRef.current,
-          dispatch: (action) => {
-            action = { ...action };
-            const { promise, resolve } = createPromise<void>();
-            actionPromises.set(action, { resolve });
-            dispatcher(action);
-            return promise;
-          },
-        };
-        return actionFactory(actionContext);
-      };
-
-      const createEffects = (actions: Actions) => {
-        const configs = effectFactory(actions);
-        return Object.entries(configs).reduce<Record<string, EffectArgs<State>>>((acc, [key, config]) => {
-          acc[key] = buildEffect(config);
-          return acc;
-        }, {}) as Record<keyof Effects, EffectArgs<State>>;
-      };
-
-      return { stateRef, reducer, createStaticItems };
+    const reducer: Reducer<State> = (state, action) => {
+      action = { ...action };
+      const next = rootReducer(state, action);
+      stateRef.current = next;
+      actionPromises.get(action)?.resolve();
+      return next;
     };
 
-    return function createStore<T>(adapter: StoreAdapter<T, State, Actions, Effects>) {
-      return (initialStateInit: InitialStateInit<State>): T => {
-        return adapter(createStoreCore, initialStateInit);
-      };
+    const stateRef = {} as StateRef<State>;
+    // apply reducers to the initial state
+    const initialState = (stateRef.current = reducer(initialStateInit(props), {} as ActionObject));
+
+    const createStaticItems = (dispatcher: Dispatcher) => {
+      const actions = createActions(dispatcher);
+      const effects = createEffects(actions);
+      return { actions, effects };
     };
+
+    const createActions = (dispatcher: Dispatcher) => {
+      const actionContext: ActionContext<State> = {
+        getState: () => stateRef.current,
+        dispatch: (action) => {
+          action = { ...action };
+          const { promise, resolve } = createPromise<void>();
+          actionPromises.set(action, { resolve });
+          dispatcher(action);
+          return promise;
+        },
+      };
+      return actionFactory(actionContext);
+    };
+
+    const createEffects = (actions: Actions) => {
+      const configs = effectFactory(actions);
+      return Object.entries(configs).reduce<Record<string, EffectArgs<State>>>((acc, [key, config]) => {
+        acc[key] = buildEffect(config);
+        return acc;
+      }, {}) as Record<keyof Effects, EffectArgs<State>>;
+    };
+
+    return { initialState, reducer, createStaticItems };
+  };
+
+  return function createStore<T>(adapter: StoreAdapter<T, Props, State, Actions, Effects>) {
+    return adapter(createStoreCore);
   };
 }
 

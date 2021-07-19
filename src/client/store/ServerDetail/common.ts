@@ -18,11 +18,16 @@ declare global {
 
 type State = Meteora.Store.ServerDetail.State;
 
+const createInitialState = (): State['common'] => ({
+  isLoading: false,
+});
+
 const reduceState: ChildReducer<State> = ({ instance, common }) => {
   const loading = { ...instance.loading };
   common.isLoading = Object.values(loading).some(Boolean);
 };
 
 export default {
+  createInitialState,
   reduceState,
 };

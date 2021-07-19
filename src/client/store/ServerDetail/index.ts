@@ -7,6 +7,12 @@ declare global {
   namespace Meteora {
     namespace Store {
       namespace ServerDetail {
+        interface Props {
+          name: string;
+          instance: Meteora.InstanceInfo;
+          creationOperation: Meteora.OperationInfo | null;
+        }
+
         interface State {
           name: string;
         }
@@ -16,8 +22,17 @@ declare global {
 }
 
 type State = Meteora.Store.ServerDetail.State;
+type Props = Meteora.Store.ServerDetail.Props;
 
-export default defineStore<State>()(
+export default defineStore(
+  function initialStateInit(props: Props): State {
+    return {
+      name: props.name,
+      common: common.createInitialState(),
+      instance: instance.createInitialState(props),
+      server: server.createInitialState(),
+    };
+  },
   [instance.reduceAction, server.reduceAction, common.reduceState, instance.reduceState, server.reduceState],
   function createActions(context) {
     return {

@@ -14,7 +14,13 @@ declare global {
 
 type State = Meteora.Store.ServerList.State;
 
-export default defineStore<State>()(
+export default defineStore(
+  function initialStateInit(): State {
+    return {
+      list: list.createInitialState(),
+      creation: creation.createInitialState(),
+    };
+  },
   [list.reduceAction, creation.reduceAction, list.reduceState, creation.reduceState],
   function createActions(context) {
     return {

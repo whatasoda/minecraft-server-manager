@@ -29,6 +29,11 @@ type Action =
   | { type: 'list.setLoading'; payload: { isLoading: boolean } }
   | { type: 'list.setInstances'; payload: { instances: Meteora.InstanceInfo[] } };
 
+const createInitialState = (): State['list'] => ({
+  isLoading: false,
+  items: [],
+});
+
 const reduceAction: ChildReducer<State, Action> = (state, action) => {
   switch (action.type) {
     case 'list.setLoading': {
@@ -70,6 +75,7 @@ const createActions = createActionFactory<State, Action>()(({ dispatch, getState
 }));
 
 export default {
+  createInitialState,
   reduceAction,
   reduceState,
   createActions,

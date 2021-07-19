@@ -1,4 +1,4 @@
-import { validateServerConfig } from '../../../shared/models/server-config';
+import { serverConfigDefault, validateServerConfig } from '../../../shared/models/server-config';
 import mcsService, { refreshOperations } from '../../services/mcs';
 import { ChildReducer, createActionFactory } from '../utils/factory';
 
@@ -32,6 +32,14 @@ type Action =
   | { type: 'creation.setLoading'; payload: { isLoading: boolean } }
   | { type: 'creation.updateConfig'; payload: { config: Partial<Meteora.ServerConfig> } }
   | { type: 'creation.setCreatingItem'; payload: { creating: Meteora.Store.ServerList.CreatingItem | null } };
+
+const createInitialState = (): State['creation'] => ({
+  isLoading: false,
+  isReadyToCreate: false,
+  config: { ...serverConfigDefault },
+  validations: validateServerConfig(serverConfigDefault, { servers: [] }),
+  creating: null,
+});
 
 const reduceAction: ChildReducer<State, Action> = (state, action) => {
   switch (action.type) {
@@ -97,6 +105,7 @@ const createActions = createActionFactory<State, Action>()(({ dispatch, getState
 }));
 
 export default {
+  createInitialState,
   reduceAction,
   reduceState,
   createActions,

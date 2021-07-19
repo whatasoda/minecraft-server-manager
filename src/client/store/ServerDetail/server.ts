@@ -1,3 +1,4 @@
+import { initRecord } from '../../../shared/utils/record';
 import mcsService from '../../services/mcs';
 import { ChildReducer, createActionFactory } from '../utils/factory';
 
@@ -31,6 +32,12 @@ type LoadingKey = Meteora.Store.ServerDetail.ServerLoadingKey;
 type Action =
   | { type: 'server.setLoading'; payload: { key: LoadingKey; isLoading: boolean } }
   | { type: 'server.setInfo'; payload: { info: Meteora.ServerProcessInfo | null } };
+
+const createInitialState = (): State['server'] => ({
+  info: null,
+  ready: initRecord(false, ['refresh', ...SERVER_ACTION_KEYS]),
+  loading: initRecord(false, ['refresh', ...SERVER_ACTION_KEYS]),
+});
 
 const reduceAction: ChildReducer<State, Action> = (state, action) => {
   switch (action.type) {
@@ -126,6 +133,7 @@ const createActions = createActionFactory<State, Action>()(({ dispatch, getState
 }));
 
 export default {
+  createInitialState,
   reduceAction,
   reduceState,
   createActions,

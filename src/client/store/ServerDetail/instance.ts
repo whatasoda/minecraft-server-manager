@@ -1,3 +1,4 @@
+import { initRecord } from '../../../shared/utils/record';
 import toast from '../../components/_overlays/toast';
 import mcsService, { refreshOperations } from '../../services/mcs';
 import { ChildReducer, createActionFactory } from '../utils/factory';
@@ -27,6 +28,7 @@ declare global {
 const OPERATION_KEYS = ['start', 'stop', 'delete'] as const;
 
 type State = Meteora.Store.ServerDetail.State;
+type Props = Meteora.Store.ServerDetail.Props;
 type LoadingKey = Meteora.Store.ServerDetail.InstanceLoadingKey;
 type OperationKey = Meteora.Store.ServerDetail.InstanceOperationKey;
 type Operations = State['instance']['operations'];
@@ -35,6 +37,16 @@ type Action =
   | { type: 'instance.setLoading'; payload: { key: LoadingKey; isLoading: boolean } }
   | { type: 'instance.setInfo'; payload: { info: Meteora.InstanceInfo } }
   | { type: 'instance.setOperations'; payload: { operations: Operations } };
+
+const createInitialState = ({ instance, creationOperation }: Props): State['instance'] => ({
+  info: instance,
+  operations: {
+    ...initRecord(null, OPERATION_KEYS),
+    create: creationOperation,
+  },
+  ready: initRecord(false, OPERATION_KEYS),
+  loading: initRecord(false, ['create', 'refresh', ...OPERATION_KEYS]),
+});
 
 const reduceAction: ChildReducer<State, Action> = (state, action) => {
   switch (action.type) {
@@ -122,6 +134,7 @@ const createActions = createActionFactory<State, Action>()(({ dispatch, getState
 }));
 
 export default {
+  createInitialState,
   reduceAction,
   reduceState,
   createActions,
