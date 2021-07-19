@@ -17,7 +17,7 @@ declare global {
 
 type State = Meteora.Store.ServerDetail.State;
 
-defineStore<State>()(
+export default defineStore<State>()(
   [instance.reduceAction, server.reduceAction, common.reduceState, instance.reduceState, server.reduceState],
   function createActions(context) {
     return {
@@ -25,8 +25,18 @@ defineStore<State>()(
       server: server.createActions(context),
     };
   },
-  function createEffects({ instance }) {
+  function createEffects({ instance, server }) {
     return {
+      initInfo: [
+        () => {
+          (async () => {
+            await instance.refresh();
+            await server.refresh();
+          })();
+        },
+        () => [],
+      ],
+
       watchOperations: [
         () => {
           const interval = setInterval(() => {
@@ -41,5 +51,3 @@ defineStore<State>()(
     };
   },
 );
-
-export default {};

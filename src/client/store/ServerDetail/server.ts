@@ -14,7 +14,7 @@ declare global {
 
         interface ServerState {
           info: Meteora.ServerProcessInfo | null;
-          ready: Record<ServerActionKey, boolean>;
+          ready: Record<ServerLoadingKey, boolean>;
           loading: Record<ServerLoadingKey, boolean>;
         }
       }
@@ -55,24 +55,25 @@ const reduceAction: ChildReducer<State, Action> = (state, action) => {
 const reduceState: ChildReducer<State> = ({ server, instance, common }) => {
   const isServerRunning = instance.info.status === 'RUNNING';
   const isServerOpened = !!server.info;
-  if (common.isLoading) {
+  server.ready.refresh = isServerRunning && !server.loading.refresh;
+  if (common.isLoading || !isServerRunning) {
     SERVER_ACTION_KEYS.forEach((key) => {
       server.ready[key] = false;
     });
   } else {
-    server.ready.open = isServerRunning && !isServerOpened;
-    server.ready.close = isServerRunning && isServerOpened;
-    server.ready.backup = isServerRunning;
-    server.ready.syncDatapack = isServerRunning;
-    server.ready.syncToServer = isServerRunning && !isServerOpened;
-    server.ready.syncToStorage = isServerRunning && !isServerOpened;
+    server.ready.open = !isServerOpened;
+    server.ready.close = isServerOpened;
+    server.ready.backup = true;
+    server.ready.syncDatapack = true;
+    server.ready.syncToServer = !isServerOpened;
+    server.ready.syncToStorage = !isServerOpened;
   }
 };
 
 const createActions = createActionFactory<State, Action>()(({ dispatch, getState }) => ({
   async refresh() {
     const { server, instance } = getState();
-    if (server.loading.refresh) return;
+    if (!server.ready.refresh) return;
     await dispatch({ type: 'server.setLoading', payload: { key: 'refresh', isLoading: true } });
     const res = await mcsService.serverStatus({ instance: instance.info.name });
     if (res.data) {
