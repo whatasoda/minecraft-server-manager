@@ -38,7 +38,8 @@
       "http-proxy-middleware": true,
       "node-fetch": true,
       "ts-node": true,
-      "typescript": true
+      "typescript": true,
+      "uuid": true
     }
   },
   "mcs": {
@@ -50,7 +51,8 @@
       "minecraft-server-util": true,
       "node-fetch": true,
       "ts-node": true,
-      "typescript": true
+      "typescript": true,
+      "uuid": true
     }
   },
   "dependencies": {
