@@ -61,7 +61,7 @@ fi
 rev_sha=$( \
   curl -fsSL -H "Accept: application/vnd.github.v3+json" \
     "https://api.github.com/repos/$repository/commits/$REVISION" | \
-    jq .sha \
+    jq -r .sha \
 )
 
 if [[ ! -e $revision_file ]] || [[ "$(cat $revision_file)" != "$rev_sha" ]]; then
@@ -69,7 +69,7 @@ if [[ ! -e $revision_file ]] || [[ "$(cat $revision_file)" != "$rev_sha" ]]; the
   TEMP_ZIP=$(mktemp)
   TEMP_DIR=$(mktemp -d)
   # download repo data
-  curl -fsSL "https://github.com/$repository/archive/refs/heads/$rev_sha.zip" > $TEMP_ZIP
+  curl -fsSL "https://github.com/$repository/archive/$rev_sha.zip" > $TEMP_ZIP
   # unzip files
   unzip $TEMP_ZIP -d $TEMP_DIR &> /dev/null
   rm -rf repo
