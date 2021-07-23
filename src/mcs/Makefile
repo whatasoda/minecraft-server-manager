@@ -40,7 +40,7 @@ assert-server-started:
 
 .PHONY: server-status
 server-status:
-	@node $(SERVER_STATUS_JS)
+	@node $(SERVER_STATUS_JS) || true
 
 .PHONY: load-server
 load-server: assert-server-stopped
@@ -145,7 +145,7 @@ start-agent:
 .PHONY: stop-agent
 stop-agent:
 	@
-	$(call screen-execute,test,stuff "^C") || true
+	$(call screen-execute,agent,stuff "^C") || true
 	$(call screen-execute,agent,kill) || true
 
 .PHONY: sc.agent

@@ -2,6 +2,10 @@
 
 cd ~
 
+metadata_file=/root/.metadata
+revision_file=/root/.revision
+repository=whatasoda/minecraft-server-manager
+
 if ! command -v node &> /dev/null; then
   apt update
   curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash -
@@ -9,20 +13,20 @@ if ! command -v node &> /dev/null; then
   apt-get clean
 fi
 
-if [ -e .metadata ]; then
-  source .metadata
+if [[ -e $metadata_file ]]; then
+  source $metadata_file
 fi
-cat <<EOF > .metadata
+cat <<EOF > $metadata_file
 export NODE_ENV=production
 EOF
-source .metadata
+source $metadata_file
 
 export REVISION=main
 export TIMEZONE=UTC-9
 export JAVA_MEM_SIZE=2
 export JAVA_PACKAGE_NAME=openjdk-16-jdk-headless
 
-if [ -z "$SERVER_JAR_URL" ]; then
+if [[ -z "$SERVER_JAR_URL" ]]; then
   TEMP_FILE=$(mktemp)
   curl -fsSL https://launchermeta.mojang.com/mc/game/version_manifest.json | \
     jq '[.versions[] | select(.type == "release")][0] | .url' | \
@@ -54,20 +58,28 @@ if ! command -v java &> /dev/null; then
   apt-get clean
 fi
 
-if [ ! -e /root/repo/package.json ]; then
-  printf "No repo data found, downloading..."
+rev_sha=$( \
+  curl -fsSL -H "Accept: application/vnd.github.v3+json" \
+    "https://api.github.com/repos/$repository/commits/$REVISION" | \
+    jq .sha \
+)
+
+if [[ ! -e $revision_file ]] || [[ "$(cat $revision_file)" != "$rev_sha" ]]; then
+  # prepare temp files
   TEMP_ZIP=$(mktemp)
   TEMP_DIR=$(mktemp -d)
-  curl -fsSL "https://github.com/whatasoda/minecraft-server-manager/archive/refs/heads/$REVISION.zip" > $TEMP_ZIP
+  # download repo data
+  curl -fsSL "https://github.com/$repository/archive/refs/heads/$rev_sha.zip" > $TEMP_ZIP
+  # unzip files
   unzip $TEMP_ZIP -d $TEMP_DIR &> /dev/null
-  mv $TEMP_DIR/* /root/repo
+  rm -rf repo
+  mv $TEMP_DIR/* repo
   rm -rf $TEMP_ZIP $TEMP_DIR
-  printf "done\n"
-fi
-
-if [ ! -e /root/node_modules ]; then
+  # store current revision
+  echo $rev_sha > $revision_file
+  # install npm packages
   node repo/scripts/build-package-json.js
-  mv repo/dist/mcs-workdir/* /root/
+  mv repo/dist/mcs-workdir/* ./
   npm ci
 fi
 
