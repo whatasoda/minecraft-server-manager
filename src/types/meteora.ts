@@ -30,7 +30,12 @@ declare global {
       javaMemorySize: string;
     }
 
-    export interface ServerProcessInfo {
+    export type ServerProcessInfo = ServerProcessInfoDead | ServerProcessInfoAlive;
+    export interface ServerProcessInfoDead {
+      isAlive: false;
+    }
+    export interface ServerProcessInfoAlive {
+      isAlive: true;
       description: string | null;
       version: StatusResponse['version'];
       modInfo: StatusResponse['modInfo'];

@@ -11,7 +11,7 @@ import {
 } from '../services/compute';
 import { defaultAdapter } from '../../shared/defaultRequestAdapter';
 import createRequestHandlers from '../../shared/requestHandlerFactory';
-import { createMcsProxy, McsApiClient, resolveMcsBaseUrl } from './utils';
+import { createMcsProxy } from './utils';
 import { initComputeContext } from '../service-adapters/compute';
 
 const mcs = express().use(withAuth(), (req, _, next) => {
@@ -42,13 +42,7 @@ export interface McsHandlers {
   '/start': [{ instance: string }, { operation: Meteora.OperationInfo }];
   '/stop': [{ instance: string }, { operation: Meteora.OperationInfo }];
   '/delete': [{ instance: string }, { operation: Meteora.OperationInfo }];
-  '/status': [
-    { instance: string },
-    {
-      instance: Meteora.InstanceInfo;
-      serverProcess: Meteora.ServerProcessInfo | null;
-    },
-  ];
+  '/status': [{ instance: string }, { instance: Meteora.InstanceInfo }];
   '/operation': [{ operation: string }, { operation: Meteora.OperationInfo }];
 }
 
@@ -60,14 +54,7 @@ createRequestHandlers<McsHandlers>({
   },
   '/status': async ({ body, req }) => {
     const instance = await getInstanceInfo(req, body.instance);
-    const baseUrl = await resolveMcsBaseUrl(body.instance, () => Promise.resolve(instance)).catch(() => null);
-    if (baseUrl) {
-      const appStatus = await McsApiClient.status(body, baseUrl);
-      if (appStatus.error === null) {
-        return { instance, serverProcess: appStatus.data.server };
-      }
-    }
-    return { instance, serverProcess: null };
+    return { instance };
   },
   '/operation': async ({ body, req }) => {
     const operation = await getOperationInfo(req, body.operation);

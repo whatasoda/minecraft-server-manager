@@ -42,7 +42,7 @@ export const makeDispatch = createMakeFunc(dispatchTargets, (cp) => {
 });
 
 export type MakeQueryTarget = typeof queryTargets[number];
-const queryTargets = ['server-status'] as const;
+const queryTargets = [] as const;
 export const makeQuery = createMakeFunc(queryTargets, async (cp) => {
   let data = '';
   cp.stdout?.on('data', (chunk: string) => {

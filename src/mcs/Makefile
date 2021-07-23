@@ -13,8 +13,6 @@ SERVER_JAR=$(SERVER_DIR)/server.jar
 EULA=$(SERVER_DIR)/eula.txt
 DATAPACKS_DIR=$(SERVER_DIR)/world/datapacks
 
-SERVER_STATUS_JS=./repo/src/mcs/server-status.js
-
 .PHONY: startup
 startup:
 	@
@@ -37,10 +35,6 @@ assert-server-started:
 	@
 	if ! $(call screen-exist,$(1)); then exit 1; fi
 	if ! node $(SERVER_STATUS_JS) &> /dev/null; then exit 1; fi
-
-.PHONY: server-status
-server-status:
-	@node $(SERVER_STATUS_JS) || true
 
 .PHONY: load-server
 load-server: assert-server-stopped

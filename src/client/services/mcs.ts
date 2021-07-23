@@ -38,9 +38,7 @@ const mcsService = createApiClient<McsServerHandlers & McsInstanceHandlers>({ ba
   serverStatus: {
     path: '/server-status',
     method: 'get',
-    onResponse: ({ error }) => {
-      error?.message && toast.danger(failGet('/server-status', error?.message));
-    },
+    onResponse: () => {},
   },
   operation: {
     path: '/operation',

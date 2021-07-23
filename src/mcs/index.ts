@@ -2,10 +2,11 @@
 import express from 'express';
 import fs from 'fs';
 import withMcsAuth from './mcs-auth';
-import { makeDispatch, MakeDispatchTarget, makeQuery } from './make';
+import { makeDispatch, MakeDispatchTarget } from './make';
 import createRequestHandlers from '../shared/requestHandlerFactory';
 import { defaultAdapter } from '../shared/defaultRequestAdapter';
 import sliceLine from './slice-line';
+import serverStatus from './status';
 
 const app = express();
 
@@ -40,7 +41,7 @@ createRequestHandlers<McsHandlers>({
     return sliceLine(raw, stride, cursor);
   },
   '/server-status': async () => {
-    const server = (await makeQuery('server-status')) as Meteora.ServerProcessInfo;
+    const server = await serverStatus();
     return { server };
   },
   '/make': async ({ body }) => {
