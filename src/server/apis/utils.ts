@@ -35,7 +35,10 @@ export const McsApiClient = createApiClient<McsHandlers>({}, (client) => {
 // TODO: set short timeout
 export const createMcsProxy = (path: string) => {
   return createProxyMiddleware({
-    pathRewrite: () => path,
+    pathRewrite: (original) => {
+      const [, query = ''] = original.split('?');
+      return `${path}?${query}`;
+    },
     router: async (req) => {
       initComputeContext(req);
       const { instance } = { ...req.body, ...req.query } as { instance?: string };
@@ -56,9 +59,9 @@ export const createMcsProxy = (path: string) => {
         proxyReq.setHeader(name, value);
       });
 
-      if (req.body) {
-        // https://github.com/chimurai/http-proxy-middleware/issues/320#issuecomment-474922392
-        const contentType = proxyReq.getHeader('Content-Type') as string;
+      // https://github.com/chimurai/http-proxy-middleware/issues/320#issuecomment-474922392
+      const contentType = proxyReq.getHeader('Content-Type');
+      if (req.body && typeof contentType === 'string') {
         const writeBody = (bodyData: string) => {
           proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
           proxyReq.write(bodyData);
