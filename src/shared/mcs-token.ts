@@ -36,7 +36,7 @@ export function createMcsAuthHeaders(hostname: string, secret: string): McsAuthH
 
 export function veirfyRequest(req: { headers: IncomingHttpHeaders }, hostname: string, secret: string): boolean {
   const headers = Object.entries(req.headers).reduce<IncomingHttpHeaders>((acc, [key, value]) => {
-    acc[key] = value;
+    acc[key.toUpperCase()] = value;
     return acc;
   }, {});
   const { 'X-MCS-TOKEN': receivedToken, 'X-MCS-TIMESTAMP': timestamp } = headers as unknown as McsAuthHeaders;
