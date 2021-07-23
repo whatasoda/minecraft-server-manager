@@ -71,10 +71,12 @@ load-datapacks:
 .PHONY: backup-server
 backup-server:
 	@
-	TEMP_ZIP=$$(mktemp)
-	TEMP_DIR=$$(mktemp -d)
+	TEMP_ZIP=$$(mktemp -u --suffix=".zip")
+	TEMP_DIR=$$(mktemp -ud)
 	cp -r $(SERVER_DIR) $$TEMP_DIR
-	rm -f "$$TEMP_DIR/{server.jar,**/*.log.gz,**/*.log}"
+	find $$TEMP_DIR \( \
+		-name "server.jar" -o -name "*.log" -o -name "*.log.gz" \
+	\) -delete
 	zip -r $$TEMP_ZIP $$TEMP_DIR
 	gsutil cp $$TEMP_ZIP $(GS_BACKUP_ZIP)
 	rm -rf $$TEMP_ZIP $$TEMP_DIR
